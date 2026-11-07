@@ -2,43 +2,45 @@ package org.tunaos.mail.feature.tuta
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.k9mail.feature.account.common.domain.AccountDomainContract.AccountStateRepository
+import java.io.IOException
+import java.security.GeneralSecurityException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.tunaos.mail.provider.TunaSignInHandoff
+import net.thunderbird.legacy.logging.Log
+import org.tunaos.mail.provider.TunaSignInTarget
 import org.tunaos.tuta.TutaErrorCode
 
 /**
- * The Tuta sign-in of account setup: the password (carried over from the setup's password step, and editable here),
- * then a TOTP code when the account has two-factor sign-in.
+ * The Tuta sign-in of an account: of one being set up, or of an existing one signing in again ([TunaSignInTarget]).
+ * The password (carried over from the setup's password step, and editable here), then a TOTP code when the account
+ * has two-factor sign-in.
  *
  * The sign-in Tuta keeps open for the code ([PendingSignIn]) is held only here, in memory, and dropped whenever the
- * password changes, the user steps back, or Tuta says the sign-in has to start over. Leaving the screen for the
- * address step ends this view model, and with it the pending sign-in.
+ * password changes, the user steps back, or Tuta says the sign-in has to start over. Leaving the screen ends this view
+ * model, and with it the pending sign-in.
  */
 class TutaSignInViewModel(
     private val signIn: TutaSignIn,
-    private val accountStateRepository: AccountStateRepository,
-    private val handoff: TunaSignInHandoff,
+    private val target: TunaSignInTarget,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(TutaSignInState())
     val state: StateFlow<TutaSignInState> = mutableState.asStateFlow()
 
     private var pending: PendingSignIn? = null
 
-    /** Loads the address and password from the setup; signs in right away when there is a password. */
+    /** Loads the address and any password from the [target]; signs in right away when there is a password. */
     fun start() {
-        val serverSettings = accountStateRepository.getState().incomingServerSettings ?: return
-        val email = serverSettings.username
+        val email = target.email
+        if (email.isEmpty()) return
         if (state.value.email == email && state.value.isStarted) return
 
         pending = null
         mutableState.value = TutaSignInState(
             email = email,
-            password = serverSettings.password.orEmpty(),
+            password = target.password,
             isStarted = true,
         )
         if (state.value.password.isNotEmpty()) submit()
@@ -70,7 +72,7 @@ class TutaSignInViewModel(
         mutableState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             val result = signIn.signIn(current.email, current.password, totp, pending)
-            onResult(current.email, result)
+            onResult(result)
         }
     }
 
@@ -85,11 +87,11 @@ class TutaSignInViewModel(
         return false
     }
 
-    private fun onResult(email: String, result: TutaSignInResult) {
+    private suspend fun onResult(result: TutaSignInResult) {
         when (result) {
             is TutaSignInResult.SignedIn -> {
                 pending = null
-                handoff.complete(accountStateRepository, TUTA_SERVER_TYPE, email, result.session)
+                if (!keep(result.session)) return
                 mutableState.update {
                     it.copy(password = "", totp = "", isLoading = false, isSignedIn = true, error = null)
                 }
@@ -110,7 +112,22 @@ class TutaSignInViewModel(
         }
     }
 
+    /** Hands the session to the [target]; false (and an error shown) when it could not be saved. */
+    private suspend fun keep(session: String): Boolean {
+        try {
+            target.complete(session)
+            return true
+        } catch (e: IOException) {
+            Log.e(TAG, e, "Could not save the Tuta session of %s", target)
+        } catch (e: GeneralSecurityException) {
+            Log.e(TAG, e, "Could not encrypt the Tuta session of %s", target)
+        }
+        mutableState.update { it.copy(isLoading = false, error = TutaSignInError.UNKNOWN) }
+        return false
+    }
+
     private companion object {
+        const val TAG = "TutaSignInViewModel"
         const val TOTP_LENGTH = 6
     }
 }

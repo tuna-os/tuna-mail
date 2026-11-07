@@ -1,19 +1,18 @@
 package org.tunaos.mail.feature.tuta
 
-import androidx.navigation.NavGraphBuilder
-import androidx.navigation.compose.composable
+import androidx.compose.runtime.Composable
 import com.fsck.k9.backend.api.Backend
 import net.thunderbird.backend.api.BackendFactory
 import net.thunderbird.backend.api.BackendStorageFactory
 import net.thunderbird.core.android.account.LegacyAccountManager
 import net.thunderbird.feature.account.AccountId
 import net.thunderbird.legacy.logging.Log
-import org.koin.compose.viewmodel.koinViewModel
 import org.tunaos.mail.backend.tuta.TutaApi
 import org.tunaos.mail.backend.tuta.TutaBackend
 import org.tunaos.mail.backend.tuta.TutaSessionSource
 import org.tunaos.mail.provider.TunaAccountSessions
 import org.tunaos.mail.provider.TunaMailProvider
+import org.tunaos.mail.provider.TunaSignInTarget
 import org.tunaos.tuta.TutaException
 import org.tunaos.tuta.TutaSession
 
@@ -27,21 +26,15 @@ class TutaProvider(
 ) : TunaMailProvider {
     override val serverType: String = TUTA_SERVER_TYPE
 
+    override val displayName: String = "Tuta"
+
     override fun isProviderDomain(domain: String): Boolean = isTutaDomain(domain)
 
-    override fun registerSignIn(
-        navGraphBuilder: NavGraphBuilder,
-        route: String,
-        onBack: () -> Unit,
-        onSignedIn: () -> Unit,
-    ) {
-        navGraphBuilder.composable(route = route) {
-            TutaSignInScreen(
-                onBack = onBack,
-                onSignedIn = onSignedIn,
-                viewModel = koinViewModel<TutaSignInViewModel>(),
-            )
-        }
+    override fun isProviderMailServer(host: String): Boolean = host == TUTA_MAIL_SERVER
+
+    @Composable
+    override fun SignInScreen(target: TunaSignInTarget, onBack: () -> Unit, onSignedIn: () -> Unit) {
+        TutaSignInScreen(target = target, onBack = onBack, onSignedIn = onSignedIn)
     }
 
     override suspend fun revoke(session: String) {
@@ -53,7 +46,7 @@ class TutaProvider(
         try {
             api.revoke(tutaSession)
         } catch (e: TutaException) {
-            Log.w(TAG, "Could not revoke the session of a removed Tuta account: %s", e.wireCode)
+            Log.w(TAG, "Could not revoke a Tuta session: %s", e.wireCode)
         }
     }
 
@@ -62,7 +55,7 @@ class TutaProvider(
     }
 }
 
-/** Tuta's own mail domains; addresses on a custom domain are set up as Tuta accounts only through these. */
+/** Tuta's own mail domains. An address on a custom domain is recognized by its MX record ([TUTA_MAIL_SERVER]). */
 fun isTutaDomain(domain: String): Boolean {
     val name = domain.lowercase().trimEnd('.')
     return name in TUTA_DOMAINS || TUTANOTA_DOMAIN.matches(name)
@@ -70,6 +63,9 @@ fun isTutaDomain(domain: String): Boolean {
 
 private val TUTA_DOMAINS = setOf("tuta.com", "tuta.io", "tutamail.com", "keemail.me")
 private val TUTANOTA_DOMAIN = Regex("tutanota\\.[a-z]{2,}")
+
+/** The mail server a custom domain hosted at Tuta names in its MX record. */
+private const val TUTA_MAIL_SERVER = "mail.tutanota.de"
 
 /** Creates the backends of Tuta accounts, each with its session from the [TunaAccountSessions]. */
 class TutaBackendFactory(

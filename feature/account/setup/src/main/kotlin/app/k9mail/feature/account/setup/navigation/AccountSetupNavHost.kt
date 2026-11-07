@@ -71,7 +71,7 @@ fun AccountSetupNavHost(
                     val extensionRoute = if (isAutomaticConfig) {
                         setupExtensions.signInRoute(accountStateRepository)
                     } else {
-                        null
+                        setupExtensions.accountTypeRoute(accountStateRepository)
                     }
                     if (extensionRoute != null) {
                         navController.navigate(extensionRoute)
@@ -208,6 +208,7 @@ fun AccountSetupNavHost(
                         popUpTo(NESTED_NAVIGATION_AUTO_CONFIG)
                     }
                 },
+                onManualSetup = { navController.navigate(NESTED_NAVIGATION_INCOMING_SERVER_CONFIG) },
             )
         }
     }
@@ -218,6 +219,13 @@ private fun List<AccountSetupExtension>.signInRoute(
 ): String? {
     val accountState = accountStateRepository.getState()
     return firstNotNullOfOrNull { it.signInRoute(accountState) }
+}
+
+private fun List<AccountSetupExtension>.accountTypeRoute(
+    accountStateRepository: AccountDomainContract.AccountStateRepository,
+): String? {
+    val accountState = accountStateRepository.getState()
+    return firstNotNullOfOrNull { it.accountTypeRoute(accountState) }
 }
 
 internal fun checkSpecialFoldersSupport(protocolType: IncomingProtocolType?): Boolean {

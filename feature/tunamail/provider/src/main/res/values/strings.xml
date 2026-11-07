@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tunamail_account_type_title">Which kind of account is it?</string>
+    <string name="tunamail_account_type_explanation">Tuta and Proton accounts have no IMAP server to configure. If your address is on your own domain and hosted by one of them, pick it here and sign in.</string>
+    <string name="tunamail_account_type_other">Another provider (IMAP or POP3)</string>
+</resources>

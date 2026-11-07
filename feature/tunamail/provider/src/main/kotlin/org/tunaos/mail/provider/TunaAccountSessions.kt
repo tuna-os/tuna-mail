@@ -35,6 +35,19 @@ class TunaAccountSessions(
         store.put(accountId.toString(), session)
     }
 
+    /**
+     * Keeps [session], from a sign-in of the existing account [accountId], in place of its session and returns the one
+     * it replaced (null when it had none). Like a new account, it stops uploading sent mail: one whose setup never
+     * handed it a session may still have the default.
+     */
+    fun replace(accountId: AccountId, session: String): String? {
+        val replaced = store.replace(accountId.toString(), session)
+        if (accountManager.findById(accountId)?.isUploadSentMessages == true) {
+            accountManager.updateSync(accountId) { it.copy(isUploadSentMessages = false) }
+        }
+        return replaced
+    }
+
     /** Forgets the session of [accountId], once the provider has refused it for good. */
     fun forget(accountId: AccountId) {
         store.remove(accountId.toString())

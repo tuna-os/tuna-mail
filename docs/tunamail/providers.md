@@ -24,26 +24,44 @@ Linking them makes every Tuna Mail build GPL-3.0-or-later as a whole (see NOTICE
 
 - **`:backend:tunasession`** — `TunaSessionStore`: each account's provider session (a credential) by account
   UUID, one AES-GCM file per account in the no-backup directory, the key generated in and never leaving the
-  Android Keystore, the UUID bound in as associated data. Never in the account settings or a log.
+  Android Keystore, the UUID bound in as associated data. Never in the account settings or a log. `replace`
+  swaps an account's session for a new one and returns the old one.
 - **`:feature:tunamail:provider`** — `TunaMailProvider`, bound once per provider with a qualifier
   (`single<TunaMailProvider>(named("tuta"))`), and the provider-neutral work:
-  - `TunaProviderAutoDiscovery` recognizes a provider's address domains and returns `DirectServerSettings`
-    of the provider's server type; it runs ahead of the generic lookups.
+  - `TunaProviderAutoDiscovery` recognizes a provider's address domains, and otherwise looks up the domain's
+    MX record (`TunaMxLookup`, through MiniDNS like upstream's MX-based lookup): a custom domain whose mail
+    server is the provider's is the provider's. It returns `DirectServerSettings` of the provider's server
+    type and runs ahead of the generic lookups. An MX answer without DNSSEC is an untrusted result, which the
+    user confirms on the setup's password step.
   - `TunaAccountSetupExtension` (an `AccountSetupExtension`) routes such an account from the setup's
-    password step to the provider's sign-in screens, then on to the account options.
+    password step to the provider's sign-in screens, then on to the account options. When the user sets an
+    address up by hand (no configuration found, or "Edit configuration"), it first asks which kind of account
+    it is (`TunaAccountTypeScreen`): a provider, whose sign-in follows, or another provider (IMAP or POP3),
+    which continues with upstream's server settings as before.
+  - A provider's sign-in screens sign in a `TunaSignInTarget`: `SetupSignInTarget`, the account being set up,
+    or `AccountSignInTarget`, an existing account signing in again.
   - `TunaSignInHandoff` keeps a signed-in session in memory until the account exists and removes the
     password from the setup state; `TunaAccountSessions.sessionFor` adopts it for the new account (and turns
     off uploading sent mail, which the provider files itself), then reads it from the store.
+  - `TunaAccountEditExtension` (an `AccountEditExtension`) shows a provider account's sign-in where upstream
+    shows its server settings: from the account settings and from the "authentication failed" notification.
+    Signing in again replaces the session (`TunaAccountSessions.replace`), drops the account's open backend
+    (`TunaBackendReset`, bound to `BackendManager.removeBackend`, which also restarts its push) and revokes the
+    old session. The account and its mail stay.
   - `TunaAccountCleaner`, started by `TunaMailApp`, revokes and deletes the sessions of removed accounts.
-- **Wiring** — `app-tunamail`: `accounts/TunaMailProvidersModule.kt` includes each provider's Koin module;
-  `developmentModuleAdditions` (debug and release) adds `tunaBackendFactories()` to the backends and
-  `tunaAutoDiscoveries()` to the address discovery.
+- **Wiring** — `app-tunamail`: `accounts/TunaMailProvidersModule.kt` includes each provider's Koin module and
+  binds `TunaBackendReset`; `developmentModuleAdditions` (debug and release) adds `tunaBackendFactories()` to
+  the backends and `tunaAutoDiscoveries()` to the address discovery.
+- **Settings export** — a provider account is exported like any other, with its server type (`TUTA`,
+  `PROTON`) and no password; its session stays in the session store and never leaves the device. Importing it
+  asks for no password: the imported account has no session, so its first sync reports a sign-in problem and
+  the notification opens the provider's sign-in.
 - **Upstream seams** — listed with their reasons in `tools/tunamail/touchpoints.txt`.
 
 ## Tuta
 
-Server type `tuta`; addresses at `tuta.com`, `tuta.io`, `tutamail.com`, `keemail.me` and `tutanota.*`.
-An address on a custom domain is not recognized and goes through the generic setup.
+Server type `tuta`; addresses at `tuta.com`, `tuta.io`, `tutamail.com`, `keemail.me` and `tutanota.*`, and
+custom domains whose MX record names `mail.tutanota.de`.
 
 - **Setup** (`TutaSignInViewModel`): signs in with the password from the setup's password step; if the account
   has two-factor sign-in, asks for the TOTP code and sends it on the sign-in Tuta keeps open. That pending
@@ -66,13 +84,12 @@ An address on a custom domain is not recognized and goes through the generic set
   permanent failure, so a mail that may have gone out is never sent twice. **Drafts** saved to the Drafts
   folder become Tuta drafts.
 - **Push** follows Tuta's event bus; a reconnect syncs every watched folder.
-- **Limits** — no server search; no copy; a revoked session means removing and re-adding the account
-  (the account's server settings screens are IMAP's and do not apply).
+- **Limits** — no server search; no copy.
 
 ## Proton
 
-Server type `proton`; addresses at `proton.me`, `protonmail.com`, `protonmail.ch` and `pm.me`. An address on
-a custom domain is not recognized and goes through the generic setup.
+Server type `proton`; addresses at `proton.me`, `protonmail.com`, `protonmail.ch` and `pm.me`, and custom
+domains whose MX record names `mail.protonmail.ch` or `mailsec.protonmail.ch`.
 
 - **Setup** (`ProtonSignIn`, driven by `ProtonSignInViewModel`): signs in with the password from the setup's
   password step, then asks for whatever Proton wants next: the TOTP code, the mailbox password of a
@@ -106,15 +123,16 @@ a custom domain is not recognized and goes through the generic setup.
   every 30 seconds and syncs the watched folders a change touches. Network failures retry after a growing
   delay; a refused session is reported as a sign-in problem.
 - **Limits** — no server search (the SDK has none); creating, renaming and deleting folders is in the SDK but
-  not wired (upstream's `RemoteFolderCreatorResolver` only knows IMAP); a revoked session means removing and
-  re-adding the account.
+  not wired (upstream's `RemoteFolderCreatorResolver` only knows IMAP).
 
 ## Tests
 
-JVM tests run against fakes: `:backend:tunasession` (encryption, binding to the account),
+JVM tests run against fakes: `:backend:tunasession` (encryption, binding to the account, replacing a session),
 `:backend:tuta` (`FakeTutaApi`: sync, MIME, flags, moves, deletes, send, drafts, push),
-`:feature:tunamail:provider` (discovery, setup routing, handoff, cleanup) and `:feature:tunamail:tuta`
-(the sign-in state machine). `:backend:proton` (`FakeProtonApi`: folders, sync and event replay, MIME,
-flags, moves, labels, deletes, send, drafts, push, session handling) and `:feature:tunamail:proton` (the
-sign-in state machine, the CAPTCHA page's messages, the sign-in screen's view model). There are no live
-tests.
+`:feature:tunamail:provider` (discovery by domain and by MX record, setup routing, the account type choice,
+handoff, signing in again, cleanup) and `:feature:tunamail:tuta` (the sign-in state machine, for setup and for
+signing in again). `:backend:proton` (`FakeProtonApi`: folders, sync and event replay, MIME, flags, moves,
+labels, deletes, send, drafts, push, session handling) and `:feature:tunamail:proton` (the sign-in state machine,
+the CAPTCHA page's messages, the sign-in screen's view model). `:legacy:core`'s
+`OwnBackendAccountImportExportTest` covers exporting and importing an account with a backend of its own. There
+are no live tests.

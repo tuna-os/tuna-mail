@@ -18,10 +18,18 @@ feature/account/setup/src/main/kotlin/app/k9mail/feature/account/setup/ui/autodi
 #   as an IMAP bridge.
 feature/account/setup/src/main/kotlin/app/k9mail/feature/account/setup/AccountSetupModule.kt
 # - AccountSetupExtension (a new file beside it): account types whose sign-in the setup cannot validate get
-#   their own sign-in screens between the password step and the account options.
+#   their own sign-in screens between the password step and the account options, and a manual setup can offer
+#   them before the IMAP/POP3 server settings (an address on a custom domain).
 feature/account/setup/src/main/kotlin/app/k9mail/feature/account/setup/navigation/AccountSetupNavHost.kt
+# - AccountEditExtension (a new file beside it): such an account's server settings, opened from the account
+#   settings or the "authentication failed" notification, are its own screens (signing in again).
+feature/account/edit/src/main/kotlin/app/k9mail/feature/account/edit/navigation/DefaultAccountEditNavigation.kt
 # - Account types with a backend of their own delete on the server instead of failing an assertion.
 legacy/common/src/main/java/com/fsck/k9/account/DefaultDeletePolicyProvider.kt
+# - Settings export writes such an account's server type instead of failing an assertion, and the import does
+#   not ask for a password the account type never uses.
+legacy/core/src/main/java/com/fsck/k9/preferences/ServerTypeConverter.kt
+legacy/core/src/main/java/com/fsck/k9/preferences/SettingsImporter.kt
 
 # Says that Tuna Mail builds link the GPL-3.0-or-later Tuta and Proton SDKs (appended paragraph).
 NOTICE

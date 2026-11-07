@@ -23,11 +23,10 @@ val featureTunaMailProtonModule = module {
     }
     single<ProtonLogin> { SdkProtonLogin(client = get()) }
     factory { ProtonSignIn(login = get()) }
-    viewModel {
+    viewModel { parameters ->
         ProtonSignInViewModel(
             signIn = get(),
-            accountStateRepository = get(),
-            handoff = get(),
+            target = parameters.get(),
         )
     }
 }

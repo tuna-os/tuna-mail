@@ -79,6 +79,12 @@ class ProtonSignIn(private val login: ProtonLogin) {
     /** The device's WebView is too old to show Proton's CAPTCHA page. */
     fun onHumanVerificationUnsupported() = leaveVerification(ProtonSignInError.HUMAN_VERIFICATION_UNSUPPORTED)
 
+    /** The signed-in session could not be saved: the sign-in has to be done again. */
+    fun onSessionNotSaved() {
+        restart { it }
+        mutableState.update { it.copy(error = ProtonSignInError.FAILED) }
+    }
+
     private fun leaveVerification(error: ProtonSignInError) = mutableState.update {
         it.copy(step = it.stepBeforeVerification, challenge = null, error = error)
     }

@@ -8,12 +8,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import net.thunderbird.components.ui.bolt.template.Scaffold
 import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
+import org.tunaos.mail.provider.TunaSignInTarget
 
 @Composable
 internal fun ProtonSignInScreen(
+    target: TunaSignInTarget,
     onBack: () -> Unit,
     onSignedIn: () -> Unit,
-    viewModel: ProtonSignInViewModel = koinViewModel(),
+    viewModel: ProtonSignInViewModel = koinViewModel { parametersOf(target) },
 ) {
     val state by viewModel.state.collectAsState()
     val currentOnBack by rememberUpdatedState(onBack)

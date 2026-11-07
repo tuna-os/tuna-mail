@@ -170,7 +170,8 @@ class SettingsImporter internal constructor(
         val incomingAuthenticationType = incoming.settings[AUTHENTICATION_TYPE] as String
         val incomingPassword = incoming.settings[PASSWORD] as? String
         val incomingPasswordNeeded =
-            incomingAuthenticationType != "EXTERNAL" &&
+            ServerTypeConverter.usesPassword(incoming.type) &&
+                incomingAuthenticationType != "EXTERNAL" &&
                 incomingAuthenticationType != "XOAUTH2" &&
                 incomingPassword.isNullOrEmpty()
 
@@ -182,7 +183,8 @@ class SettingsImporter internal constructor(
         val outgoingUsername = outgoing.settings[USERNAME] as? String ?: ""
         val outgoingPassword = outgoing.settings[PASSWORD] as? String
         val outgoingPasswordNeeded =
-            outgoingAuthenticationType != "EXTERNAL" &&
+            ServerTypeConverter.usesPassword(outgoing.type) &&
+                outgoingAuthenticationType != "EXTERNAL" &&
                 outgoingAuthenticationType != "XOAUTH2" &&
                 outgoingUsername.isNotEmpty() &&
                 outgoingPassword.isNullOrEmpty()

@@ -38,6 +38,7 @@ import org.koin.test.verify.definition
 import org.koin.test.verify.injectedParameters
 import org.koin.test.verify.verify
 import org.openintents.openpgp.OpenPgpApiManager
+import org.tunaos.mail.provider.TunaSignInTarget
 
 class DependencyInjectionTest {
 
@@ -59,6 +60,8 @@ class DependencyInjectionTest {
                 ConfigId::class,
                 // The native-account classes take every bound TunaMailProvider, collected with getAll().
                 List::class,
+                // The provider sign-in view models are created with the account they sign in (parametersOf).
+                TunaSignInTarget::class,
             ),
             injections = injectedParameters(
                 definition<AccountRemoverWorker>(WorkerParameters::class),

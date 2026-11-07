@@ -40,6 +40,22 @@ class EncryptedFileSessionStoreTest {
     }
 
     @Test
+    fun `replace saves the new session and returns the one it replaced`() {
+        store.put(ACCOUNT, SESSION)
+
+        val replaced = store.replace(ACCOUNT, "{\"other\":1}")
+
+        assertThat(replaced).isEqualTo(SESSION)
+        assertThat(store.get(ACCOUNT)).isEqualTo("{\"other\":1}")
+    }
+
+    @Test
+    fun `replace on an account without a session returns null`() {
+        assertThat(store.replace(ACCOUNT, SESSION)).isNull()
+        assertThat(store.get(ACCOUNT)).isEqualTo(SESSION)
+    }
+
+    @Test
     fun `remove forgets the session`() {
         store.put(ACCOUNT, SESSION)
 

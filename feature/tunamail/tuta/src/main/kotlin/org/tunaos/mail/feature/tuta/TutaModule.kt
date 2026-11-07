@@ -26,11 +26,10 @@ val featureTunaMailTutaModule = module {
         )
     }
 
-    viewModel {
+    viewModel { parameters ->
         TutaSignInViewModel(
             signIn = get(),
-            accountStateRepository = get(),
-            handoff = get(),
+            target = parameters.get(),
         )
     }
 }

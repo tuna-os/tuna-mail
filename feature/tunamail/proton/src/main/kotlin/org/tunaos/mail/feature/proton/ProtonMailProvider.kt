@@ -1,7 +1,6 @@
 package org.tunaos.mail.feature.proton
 
-import androidx.navigation.NavGraphBuilder
-import androidx.navigation.compose.composable
+import androidx.compose.runtime.Composable
 import com.fsck.k9.backend.api.Backend
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -15,6 +14,7 @@ import org.tunaos.mail.backend.proton.StoredSessionProtonApi
 import org.tunaos.mail.feature.proton.ui.ProtonSignInScreen
 import org.tunaos.mail.provider.TunaAccountSessions
 import org.tunaos.mail.provider.TunaMailProvider
+import org.tunaos.mail.provider.TunaSignInTarget
 import org.tunaos.proton.ProtonClient
 import org.tunaos.proton.ProtonException
 import org.tunaos.proton.ProtonSession
@@ -24,8 +24,11 @@ const val PROTON_SERVER_TYPE = "proton"
 
 private const val TAG = "ProtonMailProvider"
 
-/** Proton's own address domains. Custom domains on Proton are not recognized by their address. */
+/** Proton's own address domains. An address on a custom domain is recognized by its MX record. */
 internal val PROTON_DOMAINS = setOf("proton.me", "protonmail.com", "protonmail.ch", "pm.me")
+
+/** The mail servers a custom domain hosted at Proton names in its MX records. */
+internal val PROTON_MAIL_SERVERS = setOf("mail.protonmail.ch", "mailsec.protonmail.ch")
 
 /** Proton Mail as a native Tuna Mail account type. */
 class ProtonMailProvider(
@@ -34,17 +37,15 @@ class ProtonMailProvider(
 ) : TunaMailProvider {
     override val serverType = PROTON_SERVER_TYPE
 
+    override val displayName = "Proton Mail"
+
     override fun isProviderDomain(domain: String): Boolean = domain in PROTON_DOMAINS
 
-    override fun registerSignIn(
-        navGraphBuilder: NavGraphBuilder,
-        route: String,
-        onBack: () -> Unit,
-        onSignedIn: () -> Unit,
-    ) {
-        navGraphBuilder.composable(route) {
-            ProtonSignInScreen(onBack = onBack, onSignedIn = onSignedIn)
-        }
+    override fun isProviderMailServer(host: String): Boolean = host in PROTON_MAIL_SERVERS
+
+    @Composable
+    override fun SignInScreen(target: TunaSignInTarget, onBack: () -> Unit, onSignedIn: () -> Unit) {
+        ProtonSignInScreen(target = target, onBack = onBack, onSignedIn = onSignedIn)
     }
 
     override suspend fun revoke(session: String) {
@@ -52,7 +53,7 @@ class ProtonMailProvider(
         try {
             client.account(ProtonSession(session), ProtonSessionStore { }).revoke()
         } catch (e: ProtonException) {
-            Log.w(TAG, e, "Could not revoke the Proton session of a removed account")
+            Log.w(TAG, e, "Could not revoke a Proton session")
         }
     }
 }
