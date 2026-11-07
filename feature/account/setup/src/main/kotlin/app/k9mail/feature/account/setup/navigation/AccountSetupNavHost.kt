@@ -3,11 +3,13 @@ package app.k9mail.feature.account.setup.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import app.k9mail.feature.account.common.domain.AccountDomainContract
 import app.k9mail.feature.account.common.domain.entity.IncomingProtocolType
 import app.k9mail.feature.account.server.settings.ui.incoming.IncomingServerSettingsScreen
 import app.k9mail.feature.account.server.settings.ui.incoming.IncomingServerSettingsViewModel
@@ -26,6 +28,7 @@ import app.k9mail.feature.account.setup.ui.options.sync.SyncOptionsScreen
 import app.k9mail.feature.account.setup.ui.options.sync.SyncOptionsViewModel
 import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersScreen
 import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersViewModel
+import org.koin.compose.getKoin
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -49,6 +52,9 @@ fun AccountSetupNavHost(
     val navController = rememberNavController()
     var isAutomaticConfig by rememberSaveable { mutableStateOf(skipToIncomingValidation) }
     var hasSpecialFolders by rememberSaveable { mutableStateOf(false) }
+    val koin = getKoin()
+    val setupExtensions = remember { koin.getAll<AccountSetupExtension>() }
+    val accountStateRepository = koinInject<AccountDomainContract.AccountStateRepository>()
 
     NavHost(
         navController = navController,
@@ -62,7 +68,14 @@ fun AccountSetupNavHost(
             AccountAutoDiscoveryScreen(
                 onNext = { result ->
                     isAutomaticConfig = result.isAutomaticConfig
-                    if (isAutomaticConfig) {
+                    val extensionRoute = if (isAutomaticConfig) {
+                        setupExtensions.signInRoute(accountStateRepository)
+                    } else {
+                        null
+                    }
+                    if (extensionRoute != null) {
+                        navController.navigate(extensionRoute)
+                    } else if (isAutomaticConfig) {
                         hasSpecialFolders = checkSpecialFoldersSupport(result.incomingProtocolType)
                         navController.navigate(NESTED_NAVIGATION_INCOMING_SERVER_VALIDATION)
                     } else {
@@ -185,7 +198,26 @@ fun AccountSetupNavHost(
                 brandNameProvider = koinInject(),
             )
         }
+
+        for (extension in setupExtensions) {
+            extension.registerRoutes(
+                navGraphBuilder = this,
+                onBack = { navController.popBackStack() },
+                onSignedIn = {
+                    navController.navigate(NESTED_NAVIGATION_DISPLAY_OPTIONS) {
+                        popUpTo(NESTED_NAVIGATION_AUTO_CONFIG)
+                    }
+                },
+            )
+        }
     }
+}
+
+private fun List<AccountSetupExtension>.signInRoute(
+    accountStateRepository: AccountDomainContract.AccountStateRepository,
+): String? {
+    val accountState = accountStateRepository.getState()
+    return firstNotNullOfOrNull { it.signInRoute(accountState) }
 }
 
 internal fun checkSpecialFoldersSupport(protocolType: IncomingProtocolType?): Boolean {

@@ -9,6 +9,8 @@ import net.thunderbird.core.featureflag.provider.RuntimeDebugOverrideFeatureFlag
 import org.koin.core.module.Module
 import org.koin.core.qualifier.named
 import org.tunaos.mail.featureflag.TunaMailFeatureFlagProvider
+import org.tunaos.mail.provider.tunaAutoDiscoveries
+import org.tunaos.mail.provider.tunaBackendFactories
 
 fun Module.developmentModuleAdditions() {
     single {
@@ -17,10 +19,10 @@ fun Module.developmentModuleAdditions() {
         )
     }
     single<Map<String, BackendFactory>>(named("developmentBackends")) {
-        mapOf("demo" to get<DemoBackendFactory>())
+        mapOf("demo" to get<DemoBackendFactory>()) + tunaBackendFactories()
     }
     single<List<AutoDiscovery>>(named("extraAutoDiscoveries")) {
-        listOf(DemoAutoDiscovery())
+        tunaAutoDiscoveries() + DemoAutoDiscovery()
     }
     single {
         RuntimeDebugOverrideFeatureFlagProvider(

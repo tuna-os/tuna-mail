@@ -2,9 +2,9 @@ package app.k9mail.feature.account.setup.ui.autodiscovery
 
 import androidx.lifecycle.viewModelScope
 import app.k9mail.autodiscovery.api.AutoDiscoveryResult
+import app.k9mail.autodiscovery.api.DirectServerSettings
 import app.k9mail.autodiscovery.api.ImapServerSettings
 import app.k9mail.autodiscovery.api.IncomingServerSettings
-import app.k9mail.autodiscovery.demo.DemoServerSettings
 import app.k9mail.feature.account.common.domain.AccountDomainContract
 import app.k9mail.feature.account.common.domain.entity.IncomingProtocolType
 import app.k9mail.feature.account.oauth.domain.entity.OAuthResult
@@ -161,7 +161,7 @@ internal class AccountAutoDiscoveryViewModel(
     }
 
     private fun updateAutoDiscoverySettings(settings: AutoDiscoveryResult.Settings) {
-        if (settings.incomingServerSettings is DemoServerSettings) {
+        if (settings.incomingServerSettings is DirectServerSettings) {
             updateState {
                 it.copy(
                     isLoading = false,

@@ -211,6 +211,9 @@ dependencies {
 
     implementation(libs.androidx.work.runtime)
 
+    // Native Tuta and Proton accounts (see docs/tunamail/providers.md).
+    implementation(projects.feature.tunamail.provider)
+
     debugImplementation(projects.backend.demo)
     debugImplementation(projects.feature.autodiscovery.demo)
 

@@ -1,10 +1,10 @@
 package app.k9mail.feature.account.setup.domain
 
+import app.k9mail.autodiscovery.api.DirectServerSettings
 import app.k9mail.autodiscovery.api.ImapServerSettings
 import app.k9mail.autodiscovery.api.IncomingServerSettings
 import app.k9mail.autodiscovery.api.OutgoingServerSettings
 import app.k9mail.autodiscovery.api.SmtpServerSettings
-import app.k9mail.autodiscovery.demo.DemoServerSettings
 import app.k9mail.feature.account.common.domain.entity.toAuthType
 import app.k9mail.feature.account.common.domain.entity.toMailConnectionSecurity
 import app.k9mail.feature.account.setup.domain.entity.toAuthenticationType
@@ -15,7 +15,7 @@ import com.fsck.k9.mail.store.imap.ImapStoreSettings
 fun IncomingServerSettings.toServerSettings(password: String?): ServerSettings {
     return when (this) {
         is ImapServerSettings -> this.toImapServerSettings(password)
-        is DemoServerSettings -> this.serverSettings
+        is DirectServerSettings -> this.toServerSettings(password)
         else -> throw IllegalArgumentException("Unknown server settings type: $this")
     }
 }
@@ -47,7 +47,7 @@ private fun ImapServerSettings.toImapServerSettings(password: String?): ServerSe
 fun OutgoingServerSettings.toServerSettings(password: String?): ServerSettings {
     return when (this) {
         is SmtpServerSettings -> this.toSmtpServerSettings(password)
-        is DemoServerSettings -> this.serverSettings
+        is DirectServerSettings -> this.toServerSettings(password)
         else -> throw IllegalArgumentException("Unknown server settings type: $this")
     }
 }
