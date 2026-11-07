@@ -108,8 +108,9 @@ jobs:
           TUNAMAIL_MICROSOFT_CLIENT_ID: ${{ vars.TUNAMAIL_MICROSOFT_CLIENT_ID || secrets.TUNAMAIL_MICROSOFT_CLIENT_ID }}
           # The release key's signature hash, which Entra needs next to the Microsoft client id.
           TUNAMAIL_MICROSOFT_SIGNATURE_HASH: 'yStrGSVKzaWo9aGp8QYNhwWEUC8='
-        # No configuration cache: it would store the signing passwords on disk.
-        run: ./gradlew --no-configuration-cache :app-tunamail:assembleRelease
+        # The project enables isolated projects, so the configuration cache cannot be turned off; its
+        # entries are encrypted and stay on this runner (setup-gradle saves no cache here).
+        run: ./gradlew :app-tunamail:assembleRelease
 
       - name: Check the signatures and collect the APKs
         id: apks
