@@ -22,6 +22,11 @@ feature/account/setup/src/main/kotlin/app/k9mail/feature/account/setup/AccountSe
 feature/account/setup/src/main/kotlin/app/k9mail/feature/account/setup/navigation/AccountSetupNavHost.kt
 # - Account types with a backend of their own delete on the server instead of failing an assertion.
 legacy/common/src/main/java/com/fsck/k9/account/DefaultDeletePolicyProvider.kt
+# - ComposeExtension (a new file in feature/mail/message/composer/api) and ComposeExtensionHost (a new file
+#   beside MessageCompose) let an account type add its own send options to the composer: a menu item, a check
+#   before the send, headers on the built message, a draft's headers read back. One-line calls into the host;
+#   Tuta's confidential mail (password-protected delivery to recipients outside Tuta) is the fork's use.
+legacy/ui/legacy/src/main/java/com/fsck/k9/activity/MessageCompose.java
 
 # Says that Tuna Mail builds link the GPL-3.0-or-later Tuta and Proton SDKs (appended paragraph).
 NOTICE
