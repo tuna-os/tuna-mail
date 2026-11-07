@@ -1,5 +1,6 @@
 package org.tunaos.mail.feature.proton
 
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
@@ -18,6 +19,7 @@ val featureTunaMailProtonModule = module {
                 accountManager = get(),
                 sessions = get(),
                 client = get(),
+                pollConditions = AndroidProtonPollConditions(androidContext()),
             ),
         )
     }
