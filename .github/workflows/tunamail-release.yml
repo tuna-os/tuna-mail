@@ -85,25 +85,27 @@ jobs:
       - name: Setup Gradle environment
         uses: ./.github/actions/setup-gradle
 
-      - name: Write the keystore
+      - name: Write the keystore and signing configuration
         env:
           KEYSTORE: ${{ runner.temp }}/tunamail-release.p12
           KEYSTORE_BASE64: ${{ secrets.TUNAMAIL_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.TUNAMAIL_KEYSTORE_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::The TUNAMAIL_KEYSTORE_BASE64 secret is not set."
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::Release keystore secrets are not set."
             exit 1
           fi
           umask 077
           printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
+          (
+            printf 'tunamail.signing.storeFile=%s\n' "$KEYSTORE"
+            printf 'tunamail.signing.storePassword=%s\n' "$KEYSTORE_PASSWORD"
+            printf 'tunamail.signing.keyAlias=tunamail\n'
+            printf 'tunamail.signing.keyPassword=%s\n' "$KEYSTORE_PASSWORD"
+          ) >> "$HOME/.gradle/gradle.properties"
 
       - name: Build the release APKs
         env:
-          # Read by app-tunamail/build.gradle.kts as the tunamail.signing.* Gradle properties.
-          ORG_GRADLE_PROJECT_tunamail.signing.storeFile: ${{ runner.temp }}/tunamail-release.p12
-          ORG_GRADLE_PROJECT_tunamail.signing.storePassword: ${{ secrets.TUNAMAIL_KEYSTORE_PASSWORD }}
-          ORG_GRADLE_PROJECT_tunamail.signing.keyAlias: tunamail
-          ORG_GRADLE_PROJECT_tunamail.signing.keyPassword: ${{ secrets.TUNAMAIL_KEYSTORE_PASSWORD }}
           TUNAMAIL_GOOGLE_CLIENT_ID: ${{ vars.TUNAMAIL_GOOGLE_CLIENT_ID || secrets.TUNAMAIL_GOOGLE_CLIENT_ID }}
           TUNAMAIL_MICROSOFT_CLIENT_ID: ${{ vars.TUNAMAIL_MICROSOFT_CLIENT_ID || secrets.TUNAMAIL_MICROSOFT_CLIENT_ID }}
           # The release key's signature hash, which Entra needs next to the Microsoft client id.
@@ -111,7 +113,6 @@ jobs:
         # The project enables isolated projects, so the configuration cache cannot be turned off; its
         # entries are encrypted and stay on this runner (setup-gradle saves no cache here).
         run: ./gradlew :app-tunamail:assembleRelease
-
       - name: Check the signatures and collect the APKs
         id: apks
         env:
@@ -210,6 +211,10 @@ jobs:
           fi
           echo "Published $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Remove the keystore
+      - name: Remove the keystore and signing credentials
         if: always()
-        run: rm -f "$RUNNER_TEMP/tunamail-release.p12"
+        run: |
+          rm -f "$RUNNER_TEMP/tunamail-release.p12"
+          if [ -f "$HOME/.gradle/gradle.properties" ]; then
+            sed -i '/^tunamail\.signing\./d' "$HOME/.gradle/gradle.properties"
+          fi
