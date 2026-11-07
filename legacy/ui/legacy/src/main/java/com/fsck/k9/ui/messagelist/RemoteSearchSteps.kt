@@ -44,7 +44,8 @@ internal class RemoteSearchSteps {
 
             step.nextCursor != null -> resources.getString(R.string.remote_search_step_search_further)
 
-            count != null -> resources.getQuantityString(R.plurals.remote_search_step_searched_all_counted, count, count)
+            count != null ->
+                resources.getQuantityString(R.plurals.remote_search_step_searched_all_counted, count, count)
 
             else -> resources.getString(R.string.remote_search_step_searched_all)
         }
