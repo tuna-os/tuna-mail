@@ -8,6 +8,7 @@ import assertk.assertions.containsExactly
 import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.containsOnly
 import assertk.assertions.doesNotContain
+import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
@@ -290,11 +291,71 @@ class ProtonBackendTest {
         backend.deleteMessages(INBOX, listOf("m1"))
 
         assertThat(api.moveCalls).containsExactly(listOf("m1") to ProtonFolderIds.TRASH)
+        assertThat(api.deleteCalls).isEmpty()
+    }
+
+    @Test
+    fun `delete in Trash and Drafts is permanent`() {
+        backend.deleteMessages(ProtonFolderIds.TRASH, listOf("m1"))
+        backend.deleteMessages(ProtonFolderIds.DRAFTS, listOf("d1"))
+
+        assertThat(api.deleteCalls).containsExactly(listOf("m1"), listOf("d1"))
+        assertThat(api.moveCalls).isEmpty()
+    }
+
+    @Test
+    fun `emptying Trash repeats until Proton reports nothing more`() {
+        api.emptyRuns = 3
+
+        backend.deleteAllMessages(ProtonFolderIds.TRASH)
+
+        assertThat(api.emptyCalls).containsExactly("3", "3", "3")
+    }
+
+    @Test
+    fun `only Trash and Spam can be emptied`() {
+        assertFailure { backend.deleteAllMessages(INBOX) }
+            .isInstanceOf<MessagingException>()
+            .prop(MessagingException::isPermanentFailure).isTrue()
+    }
+
+    @Test
+    fun `moving into a label applies it and moving out of one removes it`() {
+        withLabelFolder()
+
+        backend.moveMessages(INBOX, LABEL, listOf("m1"))
+        backend.moveMessages(LABEL, ARCHIVE, listOf("m2"))
+
+        assertThat(api.labelCalls).containsExactly(
+            Triple(listOf("m1"), LABEL, true),
+            Triple(listOf("m2"), LABEL, false),
+        )
+        assertThat(api.moveCalls).containsExactly(listOf("m2") to ARCHIVE)
+    }
+
+    @Test
+    fun `copy applies a label but cannot copy into a folder`() {
+        withLabelFolder()
+
+        assertThat(backend.copyMessages(INBOX, LABEL, listOf("m1"))).isEqualTo(mapOf("m1" to "m1"))
+        assertThat(api.labelCalls).containsExactly(Triple(listOf("m1"), LABEL, true))
+        assertFailure { backend.copyMessages(INBOX, ARCHIVE, listOf("m1")) }
+            .isInstanceOf<MessagingException>()
+            .prop(MessagingException::isPermanentFailure).isTrue()
     }
 
     @Test
     fun `an append to Sent returns no id because Proton files the sent copy itself`() {
         assertThat(backend.uploadMessage(ProtonFolderIds.SENT, TestMessages.plainText())).isNull()
+    }
+
+    @Test
+    fun `an append to Drafts saves a Proton draft and returns its id`() {
+        val id = backend.uploadMessage(ProtonFolderIds.DRAFTS, TestMessages.plainText())
+
+        assertThat(id).isEqualTo("draft-1")
+        assertThat(api.drafts.single().subject).isEqualTo("Hello")
+        assertThat(api.drafts.single().inReplyTo).isEqualTo("<parent@example.com>")
     }
 
     @Test
@@ -333,6 +394,12 @@ class ProtonBackendTest {
         assertThat(api.messageCalls).containsExactly("m1")
     }
 
+    private fun withLabelFolder() {
+        api.folders = FakeProtonApi.SYSTEM_FOLDERS +
+            ProtonFolder(id = LABEL, label = "Urgent", kind = ProtonFolderKind.LABEL)
+        backend.refreshFolderList()
+    }
+
     private fun createInbox(visibleLimit: Int = 25): InMemoryBackendFolder {
         storage.folders[INBOX] = InMemoryBackendFolder("Inbox", FolderType.INBOX)
         return storage.getFolder(INBOX).also { it.visibleLimit = visibleLimit }
@@ -341,5 +408,6 @@ class ProtonBackendTest {
     private companion object {
         const val INBOX = ProtonFolderIds.INBOX
         const val ARCHIVE = ProtonFolderIds.ARCHIVE
+        const val LABEL = "label-urgent"
     }
 }

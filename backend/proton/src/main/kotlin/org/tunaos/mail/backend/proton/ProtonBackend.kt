@@ -14,6 +14,7 @@ import net.thunderbird.core.common.mail.Flag
 import net.thunderbird.feature.mail.folder.api.FolderPathDelimiter
 import net.thunderbird.legacy.logging.Log
 import org.tunaos.mail.backend.proton.ProtonApi.Companion.MAX_BATCH
+import org.tunaos.proton.ProtonOutcome
 
 private const val TAG = "ProtonBackend"
 
@@ -22,8 +23,12 @@ private const val TAG = "ProtonBackend"
  * are Proton message ids, which survive moves. Messages are always stored complete, as the
  * decrypted MIME the SDK builds.
  *
- * Proton files the Sent copy of a sent message itself, so nothing is uploaded: an append to the
- * Sent folder returns no id, and the next sync of Sent brings the server's copy.
+ * User labels are folders here too. Copying into a label applies it; moving out of one removes
+ * it. Proton only knows one real location per message, so a copy anywhere else is refused.
+ *
+ * Proton files the Sent copy of a sent message itself, so nothing is uploaded there: an append
+ * to Sent returns no id, and the next sync of Sent brings the server's copy. Drafts are saved to
+ * Proton's Drafts, encrypted.
  */
 class ProtonBackend(
     private val backendStorage: BackendStorage,
@@ -35,8 +40,8 @@ class ProtonBackend(
     override val supportsFlags = true
     override val supportsExpunge = false
     override val supportsMove = true
-    override val supportsCopy = false
-    override val supportsUpload = false
+    override val supportsCopy = true
+    override val supportsUpload = true
     override val supportsTrashFolder = true
     override val supportsSearchByDate = false
     override val supportsFolderSubscriptions = false
@@ -66,9 +71,7 @@ class ProtonBackend(
     override fun setFlag(folderServerId: String, messageServerIds: List<String>, flag: Flag, newState: Boolean) {
         when (flag) {
             Flag.SEEN -> markRead(messageServerIds, newState)
-            Flag.FLAGGED -> protonCall {
-                messageServerIds.chunked(MAX_BATCH).forEach { api.star(it, newState).requireApplied("star") }
-            }
+            Flag.FLAGGED -> batch(messageServerIds, "star") { api.star(it, newState) }
             // Proton sets answered/forwarded itself when a reply is sent through it.
             else -> Log.d(TAG, "Not syncing flag %s to Proton", flag)
         }
@@ -92,20 +95,26 @@ class ProtonBackend(
         throw UnsupportedOperationException("Proton has no expunge")
     }
 
-    /** Outside Trash a delete moves to Trash; in Trash it would delete for good. */
+    /**
+     * In Trash and Drafts a delete is permanent (discarding a draft is deleting it); anywhere
+     * else it moves to Trash.
+     */
     override fun deleteMessages(folderServerId: String, messageServerIds: List<String>) {
-        if (folderServerId != ProtonFolderIds.TRASH) {
-            move(messageServerIds, ProtonFolderIds.TRASH)
-            return
+        if (folderServerId in PERMANENT_DELETE_FOLDERS) {
+            batch(messageServerIds, "delete") { api.delete(it) }
+        } else {
+            relocate(folderServerId, ProtonFolderIds.TRASH, messageServerIds)
         }
-        throw MessagingException(
-            "Permanent deletion is not available in proton-sdk-android 0.1.0; the message stays in Proton's Trash",
-            true,
-        )
     }
 
+    /** Empties Trash or Spam for good; Proton cannot empty any other folder. */
     override fun deleteAllMessages(folderServerId: String) {
-        throw MessagingException("Emptying a folder is not available in proton-sdk-android 0.1.0", true)
+        if (folderServerId != ProtonFolderIds.TRASH && folderServerId != ProtonFolderIds.SPAM) {
+            throw MessagingException("Proton can only empty Trash and Spam, not $folderServerId", true)
+        }
+        protonCall {
+            while (api.emptyFolder(folderServerId).more) Unit
+        }
     }
 
     override fun moveMessages(
@@ -113,7 +122,7 @@ class ProtonBackend(
         targetFolderServerId: String,
         messageServerIds: List<String>,
     ): Map<String, String> {
-        move(messageServerIds, targetFolderServerId)
+        relocate(sourceFolderServerId, targetFolderServerId, messageServerIds)
         return messageServerIds.associateWith { it }
     }
 
@@ -122,7 +131,7 @@ class ProtonBackend(
         targetFolderServerId: String,
         messageServerIds: List<String>,
     ): Map<String, String> {
-        move(messageServerIds, targetFolderServerId)
+        relocate(sourceFolderServerId, targetFolderServerId, messageServerIds)
         markRead(messageServerIds, isRead = true)
         return messageServerIds.associateWith { it }
     }
@@ -131,8 +140,12 @@ class ProtonBackend(
         sourceFolderServerId: String,
         targetFolderServerId: String,
         messageServerIds: List<String>,
-    ): Map<String, String>? {
-        throw UnsupportedOperationException("Proton has no copy")
+    ): Map<String, String> {
+        if (targetFolderServerId !in folderList.labelIds()) {
+            throw MessagingException("Proton can only copy into a label, not folder $targetFolderServerId", true)
+        }
+        batch(messageServerIds, "label") { api.label(it, targetFolderServerId, isLabelled = true) }
+        return messageServerIds.associateWith { it }
     }
 
     override fun search(
@@ -151,9 +164,13 @@ class ProtonBackend(
 
     override fun findByMessageId(folderServerId: String, messageId: String): String? = null
 
-    override fun uploadMessage(folderServerId: String, message: Message): String? {
-        if (folderServerId == ProtonFolderIds.SENT) return null
-        throw MessagingException("Uploading to Proton folder $folderServerId is not supported", true)
+    override fun uploadMessage(folderServerId: String, message: Message): String? = when (folderServerId) {
+        ProtonFolderIds.SENT -> null
+        ProtonFolderIds.DRAFTS -> {
+            val draft = ProtonOutgoingMailMapper.mapDraft(message)
+            protonCall { api.saveDraft(draft) }.id
+        }
+        else -> throw MessagingException("Proton cannot store a message in folder $folderServerId", true)
     }
 
     override fun sendMessage(message: Message) {
@@ -165,15 +182,35 @@ class ProtonBackend(
     override fun createPusher(callback: BackendPusherCallback): BackendPusher =
         ProtonBackendPusher(api, backendStorage, callback)
 
-    private fun markRead(messageServerIds: List<String>, isRead: Boolean) = protonCall {
-        messageServerIds.chunked(MAX_BATCH).forEach { api.markRead(it, isRead).requireApplied("mark_read") }
+    private fun markRead(messageServerIds: List<String>, isRead: Boolean) =
+        batch(messageServerIds, "mark_read") { api.markRead(it, isRead) }
+
+    /**
+     * A move into a label applies the label and leaves the message where it is; a move out of a
+     * label removes it. Anything else is a real move.
+     */
+    private fun relocate(source: String, target: String, messageServerIds: List<String>) {
+        val labelIds = folderList.labelIds()
+        if (target in labelIds) {
+            batch(messageServerIds, "label") { api.label(it, target, isLabelled = true) }
+        } else {
+            batch(messageServerIds, "move") { api.move(it, target) }
+        }
+        if (source in labelIds && source != target) {
+            batch(messageServerIds, "label") { api.label(it, source, isLabelled = false) }
+        }
     }
 
-    private fun move(messageServerIds: List<String>, destination: String) = protonCall {
-        messageServerIds.chunked(MAX_BATCH).forEach { api.move(it, destination).requireApplied("move") }
+    private fun batch(
+        messageServerIds: List<String>,
+        operation: String,
+        request: suspend (List<String>) -> List<ProtonOutcome>,
+    ) = protonCall {
+        messageServerIds.chunked(MAX_BATCH).forEach { request(it).requireApplied(operation) }
     }
 
     private companion object {
         const val LIST_PAGE_SIZE = 1000
+        val PERMANENT_DELETE_FOLDERS = setOf(ProtonFolderIds.TRASH, ProtonFolderIds.DRAFTS)
     }
 }

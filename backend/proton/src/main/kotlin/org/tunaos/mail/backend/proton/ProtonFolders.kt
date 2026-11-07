@@ -5,6 +5,7 @@ import com.fsck.k9.backend.api.FolderInfo
 import com.fsck.k9.backend.api.updateFolders
 import com.fsck.k9.mail.FolderType
 import org.tunaos.proton.ProtonFolder
+import org.tunaos.proton.ProtonFolderKind
 import org.tunaos.proton.ProtonFolderRole
 
 /** Proton's well-known system label ids. */
@@ -32,10 +33,16 @@ internal class ProtonFolderList(
 ) {
     fun refresh() {
         val folders = protonCall { api.sync(limit = 1, folder = ProtonFolderIds.INBOX).folders }
-        apply(folders)
+        mirror(folders)
     }
 
-    fun apply(remoteFolders: List<ProtonFolder>) {
+    /** The folders that are user labels, as of the last refresh. */
+    fun labelIds(): Set<String> {
+        val stored = backendStorage.getExtraString(EXTRA_LABEL_IDS) ?: return emptySet()
+        return stored.split(LIST_SEPARATOR).filter { it.isNotEmpty() }.toSet()
+    }
+
+    private fun mirror(remoteFolders: List<ProtonFolder>) {
         val byId = remoteFolders.associateBy { it.id }
         val remote = remoteFolders.map { folder ->
             FolderInfo(
@@ -53,6 +60,8 @@ internal class ProtonFolderList(
             createFolders(new)
             deleteFolders((localIds - remote.map { it.serverId }.toSet()).toList())
         }
+        val labelIds = remoteFolders.filter { it.kind == ProtonFolderKind.LABEL }.map { it.id }
+        backendStorage.setExtraString(EXTRA_LABEL_IDS, labelIds.joinToString(LIST_SEPARATOR))
     }
 
     /** "Parent/Child", following parent ids; a cycle or a missing parent ends the walk. */
@@ -79,4 +88,9 @@ internal class ProtonFolderList(
             ProtonFolderRole.OTHER,
             -> FolderType.REGULAR
         }
+
+    private companion object {
+        const val EXTRA_LABEL_IDS = "protonLabelIds"
+        const val LIST_SEPARATOR = "\n"
+    }
 }

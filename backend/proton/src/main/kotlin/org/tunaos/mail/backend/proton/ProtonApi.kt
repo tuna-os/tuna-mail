@@ -2,6 +2,9 @@ package org.tunaos.mail.backend.proton
 
 import kotlinx.coroutines.flow.Flow
 import org.tunaos.proton.ProtonAccount
+import org.tunaos.proton.ProtonDraft
+import org.tunaos.proton.ProtonDraftResult
+import org.tunaos.proton.ProtonEmptyResult
 import org.tunaos.proton.ProtonEvents
 import org.tunaos.proton.ProtonMessage
 import org.tunaos.proton.ProtonOutcome
@@ -28,7 +31,19 @@ interface ProtonApi {
 
     suspend fun move(ids: List<String>, destination: String): List<ProtonOutcome>
 
+    /** Adds or removes the user label [label]; the messages stay in their folder. */
+    suspend fun label(ids: List<String>, label: String, isLabelled: Boolean): List<ProtonOutcome>
+
+    /** Deletes permanently, wherever the messages are; also how a draft is discarded. */
+    suspend fun delete(ids: List<String>): List<ProtonOutcome>
+
+    /** Permanently deletes a page of Trash or Spam; call again while the result says more. */
+    suspend fun emptyFolder(folder: String): ProtonEmptyResult
+
     suspend fun send(mail: ProtonOutgoingMail): ProtonSendResult
+
+    /** Writes a new draft; [replaces] names the draft it supersedes, which is then deleted. */
+    suspend fun saveDraft(draft: ProtonDraft, replaces: String? = null): ProtonDraftResult
 
     fun watch(since: String): Flow<ProtonWatchEvent>
 
@@ -55,7 +70,17 @@ class SdkProtonApi(private val account: ProtonAccount) : ProtonApi {
     override suspend fun move(ids: List<String>, destination: String): List<ProtonOutcome> =
         account.move(ids, destination)
 
+    override suspend fun label(ids: List<String>, label: String, isLabelled: Boolean): List<ProtonOutcome> =
+        account.label(ids, label, isLabelled)
+
+    override suspend fun delete(ids: List<String>): List<ProtonOutcome> = account.delete(ids)
+
+    override suspend fun emptyFolder(folder: String): ProtonEmptyResult = account.emptyFolder(folder)
+
     override suspend fun send(mail: ProtonOutgoingMail): ProtonSendResult = account.send(mail)
+
+    override suspend fun saveDraft(draft: ProtonDraft, replaces: String?): ProtonDraftResult =
+        account.saveDraft(draft, replaces)
 
     override fun watch(since: String): Flow<ProtonWatchEvent> = account.watch(since)
 }

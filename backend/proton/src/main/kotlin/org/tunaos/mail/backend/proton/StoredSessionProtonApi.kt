@@ -5,6 +5,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import org.tunaos.proton.ProtonClient
+import org.tunaos.proton.ProtonDraft
+import org.tunaos.proton.ProtonDraftResult
+import org.tunaos.proton.ProtonEmptyResult
 import org.tunaos.proton.ProtonEvents
 import org.tunaos.proton.ProtonException
 import org.tunaos.proton.ProtonMessage
@@ -74,7 +77,17 @@ class StoredSessionProtonApi(
     override suspend fun move(ids: List<String>, destination: String): List<ProtonOutcome> =
         call { it.move(ids, destination) }
 
+    override suspend fun label(ids: List<String>, label: String, isLabelled: Boolean): List<ProtonOutcome> =
+        call { it.label(ids, label, isLabelled) }
+
+    override suspend fun delete(ids: List<String>): List<ProtonOutcome> = call { it.delete(ids) }
+
+    override suspend fun emptyFolder(folder: String): ProtonEmptyResult = call { it.emptyFolder(folder) }
+
     override suspend fun send(mail: ProtonOutgoingMail): ProtonSendResult = call { it.send(mail) }
+
+    override suspend fun saveDraft(draft: ProtonDraft, replaces: String?): ProtonDraftResult =
+        call { it.saveDraft(draft, replaces) }
 
     override fun watch(since: String): Flow<ProtonWatchEvent> = flow {
         val api = api()

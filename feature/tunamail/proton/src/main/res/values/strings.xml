@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="proton_sign_in_title">Sign in to Proton Mail</string>
+    <string name="proton_sign_in_signing_in">Signing in to Proton…</string>
+    <string name="proton_sign_in_sign_in">Sign in</string>
+
+    <string name="proton_sign_in_password_hint">Enter the password of your Proton account.</string>
+    <string name="proton_sign_in_totp_hint">Enter the 6-digit code from your authenticator app.</string>
+    <string name="proton_sign_in_totp_label">Authentication code</string>
+    <string name="proton_sign_in_mailbox_password_hint">This account uses a separate mailbox password. Enter it to unlock your mail.</string>
+    <string name="proton_sign_in_mailbox_password_label">Mailbox password</string>
+    <string name="proton_sign_in_verification_hint">Proton wants to make sure you are human. Complete the check below to continue.</string>
+
+    <string name="proton_sign_in_error_wrong_password">Proton did not accept this address and password.</string>
+    <string name="proton_sign_in_error_invalid_totp">The code must be 6 digits.</string>
+    <string name="proton_sign_in_error_totp_rejected">Proton did not accept this code. Wait for the next code and try again.</string>
+    <string name="proton_sign_in_error_unsupported_second_factor">This account only offers a security key as its second factor. This app supports authenticator app codes only; add one in your Proton account settings.</string>
+    <string name="proton_sign_in_error_mailbox_password_rejected">This mailbox password does not unlock your mail.</string>
+    <string name="proton_sign_in_error_verification_failed">The verification was not accepted. Please complete it again.</string>
+    <string name="proton_sign_in_error_verification_unavailable">Proton asked for a human verification that cannot be shown here. Try again later.</string>
+    <string name="proton_sign_in_error_verification_cancelled">Sign-in needs the human verification. Sign in again to repeat it.</string>
+    <string name="proton_sign_in_error_client_outdated">Proton no longer accepts this version of the app. Update it and try again.</string>
+    <string name="proton_sign_in_error_unreachable">Could not reach Proton. Check your connection and try again.</string>
+    <string name="proton_sign_in_error_failed">Proton refused the sign-in. Try again later.</string>
+</resources>

@@ -10,14 +10,15 @@ import com.fsck.k9.mail.internet.MimeParameterDecoder
 import com.fsck.k9.mail.internet.MimeUtility
 import net.thunderbird.core.common.exception.MessagingException
 import org.tunaos.proton.ProtonDelivery
+import org.tunaos.proton.ProtonDraft
 import org.tunaos.proton.ProtonMailbox
 import org.tunaos.proton.ProtonOutgoingAttachment
 import org.tunaos.proton.ProtonOutgoingMail
 
 /**
- * Turns a composed message into the structured mail Proton's `send` takes: Proton encrypts and
- * builds the message itself, so it wants the body as HTML and the attachments as bytes rather
- * than the finished MIME.
+ * Turns a composed message into the structured mail Proton's `send` and `save_draft` take: Proton
+ * encrypts and builds the message itself, so it wants the body as HTML and the attachments as
+ * bytes rather than the finished MIME.
  *
  * Delivery is [ProtonDelivery.ORDINARY] with consent given, which is what Proton's own clients
  * do: end-to-end encrypted to Proton and PGP recipients, TLS to everyone else.
@@ -41,10 +42,36 @@ internal object ProtonOutgoingMailMapper {
             replyTos = message.replyTo.toMailboxes(),
             attachments = content.attachments,
             messageId = message.messageId?.takeIf { it.isNotBlank() },
-            inReplyTo = message.getHeader("In-Reply-To").firstOrNull()?.trim()?.takeIf { it.isNotEmpty() },
-            references = message.getHeader("References").joinToString(" ") { it.trim() }.takeIf { it.isNotBlank() },
+            inReplyTo = message.headerTokens("In-Reply-To"),
+            references = message.headerTokens("References"),
         )
     }
+
+    fun mapDraft(message: Message): ProtonDraft = map(message).let { mail ->
+        ProtonDraft(
+            sender = mail.sender,
+            subject = mail.subject,
+            bodyHtml = mail.bodyHtml,
+            senderName = mail.senderName,
+            to = mail.to,
+            cc = mail.cc,
+            bcc = mail.bcc,
+            replyTos = mail.replyTos,
+            attachments = mail.attachments,
+            messageId = mail.messageId,
+            inReplyTo = mail.inReplyTo,
+            references = mail.references,
+        )
+    }
+
+    /** The header's values unfolded, with runs of whitespace collapsed to one space; null if empty. */
+    private fun Message.headerTokens(name: String): String? = getHeader(name)
+        .flatMap { it.split(WHITESPACE) }
+        .filter { it.isNotEmpty() }
+        .joinToString(" ")
+        .takeIf { it.isNotEmpty() }
+
+    private val WHITESPACE = Regex("\\s+")
 
     private class Content {
         var html: String? = null

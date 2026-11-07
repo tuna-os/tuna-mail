@@ -4,6 +4,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import org.tunaos.proton.ProtonClient
+import org.tunaos.proton.ProtonDraft
+import org.tunaos.proton.ProtonDraftResult
+import org.tunaos.proton.ProtonEmptyResult
 import org.tunaos.proton.ProtonEvents
 import org.tunaos.proton.ProtonException
 import org.tunaos.proton.ProtonFolder
@@ -43,6 +46,11 @@ class FakeProtonApi : ProtonApi {
     val moveCalls = mutableListOf<Pair<List<String>, String>>()
     val messageCalls = mutableListOf<String>()
     val sent = mutableListOf<ProtonOutgoingMail>()
+    val drafts = mutableListOf<ProtonDraft>()
+    val labelCalls = mutableListOf<Triple<List<String>, String, Boolean>>()
+    val deleteCalls = mutableListOf<List<String>>()
+    val emptyCalls = mutableListOf<String>()
+    var emptyRuns = 1
     val watchCalls = mutableListOf<String>()
 
     data class SyncCall(val limit: Int, val folder: String, val cursor: String?, val since: String?)
@@ -97,10 +105,30 @@ class FakeProtonApi : ProtonApi {
         return outcomes(ids)
     }
 
+    override suspend fun label(ids: List<String>, label: String, isLabelled: Boolean): List<ProtonOutcome> {
+        labelCalls += Triple(ids, label, isLabelled)
+        return outcomes(ids)
+    }
+
+    override suspend fun delete(ids: List<String>): List<ProtonOutcome> {
+        deleteCalls += ids
+        return outcomes(ids)
+    }
+
+    override suspend fun emptyFolder(folder: String): ProtonEmptyResult {
+        emptyCalls += folder
+        return ProtonEmptyResult(deleted = 150, more = emptyCalls.size < emptyRuns)
+    }
+
     override suspend fun send(mail: ProtonOutgoingMail): ProtonSendResult {
         failure?.let { throw it }
         sent += mail
         return ProtonSendResult("generated@proton.me", "sent-1", 0, 1, 0)
+    }
+
+    override suspend fun saveDraft(draft: ProtonDraft, replaces: String?): ProtonDraftResult {
+        drafts += draft
+        return ProtonDraftResult(id = "draft-${drafts.size}", messageId = "d@proton.me", replaced = false)
     }
 
     override fun watch(since: String): Flow<ProtonWatchEvent> {
