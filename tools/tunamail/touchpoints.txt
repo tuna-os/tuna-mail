@@ -34,3 +34,13 @@ app-common/src/main/kotlin/net/thunderbird/app/common/feature/mail/FeatureMailMo
 
 # Says that Tuna Mail builds link the GPL-3.0-or-later Tuta and Proton SDKs (appended paragraph).
 NOTICE
+
+# Message-list fixes carried ahead of upstream, each an upstream pull request draft in
+# docs/tunamail/upstream-candidates.md; drop these lines when upstream merges them.
+# - Compose rows show the sender's name, and keyboard actions find the focused Compose row (#11).
+legacy/ui/legacy/src/main/java/com/fsck/k9/ui/messagelist/item/MessageItemContent.kt
+legacy/ui/legacy/src/main/java/com/fsck/k9/ui/messagelist/MessageListAdapter.kt
+legacy/ui/legacy/src/main/java/com/fsck/k9/ui/messagelist/LegacyMessageListFragment.kt
+legacy/ui/legacy/src/test/java/com/fsck/k9/ui/messagelist/MessageListAdapterTest.kt
+# - The new message list flags by database id, not by the server UID (#12).
+legacy/ui/legacy/src/main/java/com/fsck/k9/ui/messagelist/MessageListFragment.kt

@@ -1340,56 +1340,29 @@ class MessageListFragment :
     }
 
     override fun onToggleMessageFlag(item: MessageListItem) {
-        val preferences = stateSnapshot.preferences
-        val messageItem = item.toMessageItemUi(
-            showContactPicture = preferences?.showMessageAvatar == true,
-            isSelected = item.messageReference in selectedMessages,
-            isActive = item.messageReference == activeMessage,
-            monogram = "",
-            url = null,
-        )
-        setFlag(messageItem, Flag.FLAGGED, !item.isStarred)
+        setFlag(listOf(item), Flag.FLAGGED, !item.isStarred)
     }
 
     private fun setFlag(messageItemUi: MessageItemUi, flag: Flag, newState: Boolean) {
-        val account = messageItemUi.account
-        if (showingThreadedList && messageItemUi.threadCount > 1) {
-            // TODO
-//            val threadRootId = messageItemUi.threadRoot
-//            messagingController.setFlagForThreads(account.id, listOf(threadRootId), flag, newState)
-        } else {
-            val messageId = messageItemUi.id.toLong()
-            messagingController.setFlag(account.id, listOf(messageId), flag, newState)
-        }
+        setFlag(findMessageListItems(listOf(messageItemUi.messageReference)), flag, newState)
     }
 
     private fun setFlagForSelected(flag: Flag, newState: Boolean) {
-        if (selectedMessagesCount == 0) return
+        val selectedReferences = stateSnapshot.messages.filter { it.selected }.map { it.messageReference }
+        setFlag(findMessageListItems(selectedReferences), flag, newState)
+    }
 
-        val messageMap = mutableMapOf<LegacyAccount, MutableList<Long>>()
-        val threadMap = mutableMapOf<LegacyAccount, MutableList<Long>>()
-        val accounts = mutableSetOf<LegacyAccount>()
-        // TODO(#10775): apply the flag to each selected message.
-//        for (messageListItem in adapter.selectedMessages) {
-//            val account = messageListItem.account
-//            accounts.add(account)
-//
-//            if (showingThreadedList && messageListItem.threadCount > 1) {
-//                val threadRootIdList = threadMap.getOrPut(account) { mutableListOf() }
-//                threadRootIdList.add(messageListItem.threadRoot)
-//            } else {
-//                val messageIdList = messageMap.getOrPut(account) { mutableListOf() }
-//                messageIdList.add(messageListItem.databaseId)
-//            }
-//        }
+    private fun findMessageListItems(messageReferences: Collection<String>): List<MessageListItem> =
+        legacyViewModel.getMessageListLiveData().value?.messageListItems.orEmpty()
+            .filterByMessageReferences(messageReferences)
 
-        for (account in accounts) {
-            messageMap[account]?.let { messageIds ->
-                messagingController.setFlag(account.id, messageIds, flag, newState)
+    private fun setFlag(messageListItems: List<MessageListItem>, flag: Flag, newState: Boolean) {
+        for ((accountId, targets) in messageListItems.toFlagTargets(showingThreadedList)) {
+            if (targets.messageIds.isNotEmpty()) {
+                messagingController.setFlag(accountId, targets.messageIds, flag, newState)
             }
-
-            threadMap[account]?.let { threadRootIds ->
-                messagingController.setFlagForThreads(account.id, threadRootIds, flag, newState)
+            if (targets.threadRootIds.isNotEmpty()) {
+                messagingController.setFlagForThreads(accountId, targets.threadRootIds, flag, newState)
             }
         }
     }
@@ -1748,7 +1721,7 @@ class MessageListFragment :
 
     override fun onToggleRead() {
         focusedMessage?.let { messageListItem ->
-            setFlag(messageListItem, Flag.SEEN, !messageListItem.starred)
+            setFlag(messageListItem, Flag.SEEN, messageListItem.state != MessageItemUi.State.Read)
         }
     }
 

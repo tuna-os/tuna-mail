@@ -39,15 +39,15 @@ refresh, swipe, selection, search, threads) stays `LegacyMessageListFragment`, s
 
 Gaps:
 
-- The sender line shows the first address, not the sender's name: `MessageItemContent.kt` maps
-  `senders.displayName = displayAddress?.address` (line 131) and passes `showCorrespondentNames = false`
-  (line 65). Contact name colouring is ignored for the same reason.
+- Contact name colouring is not carried over: the sender line shows `MessageListItem.displayName` as plain
+  text, and `ComposedAddressStyle` has no colour style. (Tuna Mail carries an upstream fix so the line shows
+  the sender's name rather than the first address, #11; see [upstream-candidates.md](upstream-candidates.md).)
 - `MessageItemContent` is `@Deprecated("Don't use. Will be removed soon.")`: upstream treats this path as a
   bridge to the new message list, not the destination.
-- Hardware-keyboard actions on the focused row (delete, toggle selection, star, read) do nothing:
-  `LegacyMessageListFragment.selectedMessageListItem` casts the focused holder `as? MessageViewHolder`
-  (line 1928) and gets `null` for a Compose row.
 - Upstream enables it in no build, not even its debug and daily ones, so it has seen little testing.
+  Hardware-keyboard actions on the focused Compose row did nothing upstream (the focused holder was cast
+  `as? MessageViewHolder`); Tuna Mail carries the fix (#11), so keyboard navigation on a device is the part
+  still untested.
 
 ### `use_new_message_reader_css_styles`: ready
 
@@ -66,20 +66,15 @@ It is a work in progress:
   (line 60), and no state-machine transition or side-effect handler accepts it.
 - **The star does nothing.** `MessageList.kt` dispatches `MessageItemEvent.ToggleFavourite` (line 84);
   nothing handles it either.
-- **Mark read/unread and star on a selection do nothing.** `MessageListFragment.setFlagForSelected`
-  (line 1366) has its loop commented out under `TODO(#10775)`; the action-mode items (lines 2263–2278)
-  call it.
-- **Starring a thread does nothing** (`setFlag`, line 1356, a bare `// TODO`), and the keyboard's
-  toggle-read shortcut flips the read flag using the *star* state (line 1751).
-- **It assumes numeric server UIDs.** `setFlag` calls `messagingController.setFlag` with
-  `messageItemUi.id.toLong()` (line 1361), but `MessageItemUi.id` is the server UID
-  (`MessageItemContent.kt`, `id = messageUid`), not the database id the controller wants. On IMAP that
-  flags whichever local message has that row id; Tuta and Proton UIDs (and local `K9LOCAL:` UIDs) are not
-  numbers, so it throws `NumberFormatException`.
+- **Fixed in Tuna Mail, not yet upstream** (#12, [upstream-candidates.md](upstream-candidates.md)):
+  `setFlag` passed `MessageItemUi.id`, the server UID, to `MessagingController.setFlag` as a database id —
+  the wrong message on IMAP, `NumberFormatException` for Tuta, Proton and local `K9LOCAL:` UIDs. It now looks
+  up the `MessageListItem`s behind the items, which also restores `setFlagForSelected` (`TODO(#10775)`) and
+  thread starring, and the keyboard's toggle-read shortcut now uses the read state, not the star.
 - Effects for move, archive, delete, back navigation and the undo snackbars (`MessageListEffect`) fall
-  through `else -> Unit` (line 2465), and the active and selected messages are not restored after a
-  configuration change (`TODO(#10775)`, line 1851).
-- Debug `println` calls are left in the effect handler (lines 2424, 2438).
+  through `else -> Unit` (line 2438), and the active and selected messages are not restored after a
+  configuration change (`TODO(#10775)`, line 1824).
+- Debug `println` calls are left in the effect handler (lines 2397, 2411).
 - Upstream's recent message-list features (empty state, pull to refresh only for remote folders,
   `fb8f48f151`, `314388ba22`) landed only in `LegacyMessageListFragment`.
 
@@ -136,13 +131,14 @@ settings provider, the signature sanitizer and preview `WebView` settings, and o
 ## What upstream would need to finish
 
 1. **Message list (`enable_message_list_new_state`):** handle `OnSwipeMessage` and `ToggleFavourite`;
-   restore `setFlagForSelected` and thread starring against `MessageItemUi`; pass the database id (not the
-   server UID) to `MessagingController`; act on the move/archive/delete/navigate effects; restore selection
-   and the active message; port the empty state and remote-folder pull to refresh; drop the `println`s;
-   then move the fragment into `feature/mail/message/list` (`TODO(#10322)`) and delete
-   `LegacyMessageListFragment`, `MessageListAdapter` and the deprecated `MessageItemContent`.
-2. **Message list rows (`use_compose_for_message_list_items`)**, if it stays until then: show the sender's
-   name and honour correspondent names, and resolve the focused Compose row for keyboard actions.
+   take the flag fix drafted in [upstream-candidates.md](upstream-candidates.md) (database ids instead of
+   server UIDs, `setFlagForSelected`, thread starring, toggle read); act on the move/archive/delete/navigate
+   effects; restore selection and the active message; port the empty state and remote-folder pull to
+   refresh; drop the `println`s; then move the fragment into `feature/mail/message/list` (`TODO(#10322)`)
+   and delete `LegacyMessageListFragment`, `MessageListAdapter` and the deprecated `MessageItemContent`.
+2. **Message list rows (`use_compose_for_message_list_items`)**, if it stays until then: take the sender
+   name and focused-row fix drafted in [upstream-candidates.md](upstream-candidates.md), and colour contact
+   names.
 3. **Reader (`use_compose_for_message_reader`):** a Compose screen to read the flag at all — headers and
    recipients, the HTML `WebView` with remote-image consent, the crypto states, message details and source.
 4. **Composer:** a Compose composer does not exist yet; `MessageCompose` would need a full rewrite
