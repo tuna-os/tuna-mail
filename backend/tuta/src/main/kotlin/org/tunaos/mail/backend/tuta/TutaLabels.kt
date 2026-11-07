@@ -52,6 +52,7 @@ internal class TutaLabels(
         if (!isKnown) remember(connection.call { listLabels(it) })
         return flaggedLabelId
     }
+
     /**
      * The flagged label's id, created when missing; null when the account cannot have it. Without a label the list is
      * read again each time, so a label chosen since is picked up.

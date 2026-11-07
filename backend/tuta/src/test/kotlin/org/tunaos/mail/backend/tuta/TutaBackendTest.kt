@@ -387,6 +387,7 @@ class TutaBackendTest {
 
         assertThat(ids).containsExactly("needle-0", "needle-700")
     }
+
     @Test
     fun `search narrows unread on the server and checks the flagged label on the results`() {
         api.labels += Label("label-flag", "Flagged", "#f5a623")
