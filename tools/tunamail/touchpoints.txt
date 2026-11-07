@@ -1,0 +1,7 @@
+# Upstream files the Tuna Mail fork modifies, one path per line (see docs/tunamail/MAINTAINING.md).
+# Each is a place an upstream merge can conflict. Shrink this list by sending provider-neutral
+# seams upstream; grow it only with a reviewed reason in the commit message.
+# Checked by tools/tunamail/check-touchpoints.sh in the upstream-sync workflow.
+
+# Registers the :app-tunamail module (one `include` after the app block).
+settings.gradle.kts

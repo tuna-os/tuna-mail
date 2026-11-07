@@ -1,0 +1,163 @@
+name: Tuna Mail - Upstream sync
+
+# The Tuna Mail fork (tuna-os/thunderbird-android) follows thunderbird/thunderbird-android:
+# once a day, upstream's main is merged into ours with a merge commit, checked, and pushed.
+# Never a rebase or a force push, so the fork's history and every tag on it stay valid.
+#
+# A merge that conflicts, touches an upstream file the fork modifies without listing it
+# (tools/tunamail/check-touchpoints.sh), or no longer builds and tests Tuna Mail pushes
+# nothing. The failed run's summary names what went wrong and the conflicting files; where
+# the repository has issues on, it also opens one issue labelled upstream-sync (or updates
+# the open one), which the next clean run closes. See docs/tunamail/MAINTAINING.md.
+#
+# GITHUB_TOKEN cannot push a commit that changes .github/workflows, and upstream changes its
+# workflows often. Give the repository an UPSTREAM_SYNC_TOKEN secret (a token with the
+# workflow scope); it is used for the push when present. Without it such merges fail to push
+# and the issue says so.
+
+on:
+  schedule:
+    - cron: '41 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: tunamail-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Merge thunderbird/thunderbird-android main
+    # Only on the fork; upstream has no use for this workflow.
+    if: github.repository == 'tuna-os/thunderbird-android'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      UPSTREAM: https://github.com/thunderbird/thunderbird-android.git
+
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.UPSTREAM_SYNC_TOKEN || github.token }}
+
+      - name: Merge
+        id: merge
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git remote add upstream "$UPSTREAM"
+          git fetch --no-tags upstream main
+          echo "upstream=$(git rev-parse upstream/main)" >> "$GITHUB_OUTPUT"
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "main already contains thunderbird/thunderbird-android $(git rev-parse --short upstream/main)"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! git merge --no-ff --no-edit -m "chore(sync): merge thunderbird/thunderbird-android main" upstream/main; then
+            git diff --name-only --diff-filter=U > "$RUNNER_TEMP/conflicts.txt"
+            git merge --abort
+            echo "conflicts in:" >&2
+            cat "$RUNNER_TEMP/conflicts.txt" >&2
+            exit 1
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Check the touchpoints
+        id: touchpoints
+        if: steps.merge.outputs.changed == 'true'
+        run: tools/tunamail/check-touchpoints.sh
+
+      - name: Cleanup disk
+        if: steps.merge.outputs.changed == 'true'
+        uses: ./.github/actions/disk-cleanup
+
+      - name: Setup Gradle environment
+        if: steps.merge.outputs.changed == 'true'
+        uses: ./.github/actions/setup-gradle
+        with:
+          write-cache: 'true'
+
+      - name: Build and test Tuna Mail
+        id: build
+        if: steps.merge.outputs.changed == 'true'
+        run: ./gradlew :app-tunamail:assembleDebug :app-tunamail:testDebugUnitTest
+
+      - name: Push
+        id: push
+        if: steps.merge.outputs.changed == 'true'
+        run: git push origin HEAD:main
+
+      - name: Close the sync issue
+        if: success()
+        run: |
+          # Issues may be turned off on the fork; then there is nothing to close.
+          [ "$(gh api "repos/$GITHUB_REPOSITORY" --jq .has_issues)" = true ] || exit 0
+          number=$(gh issue list --label upstream-sync --state open --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue close "$number" --comment "Resolved: main contains thunderbird/thunderbird-android ${{ steps.merge.outputs.upstream }} ($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)."
+          fi
+
+      - name: Open or update the sync issue
+        if: failure()
+        env:
+          MERGE: ${{ steps.merge.outcome }}
+          TOUCHPOINTS: ${{ steps.touchpoints.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          PUSH: ${{ steps.push.outcome }}
+          UPSTREAM_SHA: ${{ steps.merge.outputs.upstream }}
+        run: |
+          run="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ "$MERGE" = failure ]; then
+            what="Merging thunderbird/thunderbird-android main conflicts."
+          elif [ "$TOUCHPOINTS" = failure ]; then
+            what="The merge changes upstream files the fork modifies without listing them (tools/tunamail/check-touchpoints.sh)."
+          elif [ "$BUILD" = failure ]; then
+            what="The merged tree does not build or test Tuna Mail (:app-tunamail:assembleDebug, :app-tunamail:testDebugUnitTest)."
+          elif [ "$PUSH" = failure ]; then
+            what="The merge was clean but could not be pushed. If upstream changed .github/workflows, GITHUB_TOKEN may not push it: merge by hand, or set an UPSTREAM_SYNC_TOKEN secret with the workflow scope."
+          else
+            what="The sync job failed before it could merge."
+          fi
+          {
+            echo "The daily upstream sync stopped, and nothing was pushed to main."
+            echo
+            echo "$what"
+            echo
+            echo "- upstream: thunderbird/thunderbird-android main at \`${UPSTREAM_SHA:-unknown}\`"
+            echo "- run: $run"
+            if [ -s "$RUNNER_TEMP/conflicts.txt" ]; then
+              echo
+              echo "Conflicting files:"
+              echo
+              # Markdown code spans, not command substitution.
+              # shellcheck disable=SC2016
+              sed 's/.*/- `&`/' "$RUNNER_TEMP/conflicts.txt"
+            fi
+            echo
+            echo "To resolve, merge by hand on a clone (\`git fetch upstream main && git merge upstream/main\`), fix, build and test \`:app-tunamail\`, and push to main. docs/tunamail/MAINTAINING.md has the details."
+          } > "$RUNNER_TEMP/issue.md"
+          # The run's summary always carries the report; the failed run is the alert. The issue is
+          # extra, and only where the fork has issues on.
+          cat "$RUNNER_TEMP/issue.md" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$(gh api "repos/$GITHUB_REPOSITORY" --jq .has_issues)" != true ]; then
+            echo "::error::Upstream sync needs a hand; see the run summary."
+            exit 0
+          fi
+          gh label create upstream-sync --color d93f0b \
+            --description 'The daily merge of thunderbird/thunderbird-android needs a hand' 2>/dev/null || true
+          number=$(gh issue list --label upstream-sync --state open --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body-file "$RUNNER_TEMP/issue.md"
+            gh issue comment "$number" --body "Still failing: $run"
+          else
+            gh issue create --title 'Upstream sync needs attention' --label upstream-sync \
+              --body-file "$RUNNER_TEMP/issue.md"
+          fi
