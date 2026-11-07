@@ -88,7 +88,7 @@ include(
 )
 
 // Tuna Mail (tuna-os fork, see docs/tunamail/MAINTAINING.md)
-include(":app-tunamail")
+apply(from = "tools/tunamail/tunamail.settings.gradle.kts")
 
 include(":benchmarks")
 

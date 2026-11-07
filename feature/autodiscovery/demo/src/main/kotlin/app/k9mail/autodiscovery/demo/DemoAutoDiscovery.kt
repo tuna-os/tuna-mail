@@ -3,8 +3,7 @@ package app.k9mail.autodiscovery.demo
 import app.k9mail.autodiscovery.api.AutoDiscovery
 import app.k9mail.autodiscovery.api.AutoDiscoveryResult
 import app.k9mail.autodiscovery.api.AutoDiscoveryRunnable
-import app.k9mail.autodiscovery.api.IncomingServerSettings
-import app.k9mail.autodiscovery.api.OutgoingServerSettings
+import app.k9mail.autodiscovery.api.DirectServerSettings
 import com.fsck.k9.mail.AuthType
 import com.fsck.k9.mail.ConnectionSecurity
 import com.fsck.k9.mail.ServerSettings
@@ -32,7 +31,7 @@ class DemoAutoDiscovery : AutoDiscovery {
     }
 }
 
-object DemoServerSettings : IncomingServerSettings, OutgoingServerSettings {
+object DemoServerSettings : DirectServerSettings {
     val serverSettings = ServerSettings(
         type = "demo",
         host = "irrelevant",
@@ -43,4 +42,6 @@ object DemoServerSettings : IncomingServerSettings, OutgoingServerSettings {
         password = "irrelevant",
         clientCertificateAlias = null,
     )
+
+    override fun toServerSettings(password: String?): ServerSettings = serverSettings
 }

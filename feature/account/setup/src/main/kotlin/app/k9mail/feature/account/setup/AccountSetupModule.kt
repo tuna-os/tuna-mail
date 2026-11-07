@@ -51,10 +51,11 @@ val featureAccountSetupModule: Module = module {
 
     single<AutoDiscoveryRegistry> {
         val extraAutoDiscoveries = get<List<AutoDiscovery>>(named("extraAutoDiscoveries"))
+        // Extra discoveries know their domains for certain, so they take priority over the generic ones.
         RealAutoDiscoveryRegistry(
-            autoDiscoveries = RealAutoDiscoveryRegistry.createDefaultAutoDiscoveries(
+            autoDiscoveries = extraAutoDiscoveries + RealAutoDiscoveryRegistry.createDefaultAutoDiscoveries(
                 okHttpClient = get(),
-            ) + extraAutoDiscoveries,
+            ),
         )
     }
 

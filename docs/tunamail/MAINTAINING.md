@@ -42,8 +42,10 @@ and no Tuna Mail app. If it would, it goes upstream.
 - **Touchpoints** are upstream files the fork modifies. They are listed in
   [`tools/tunamail/touchpoints.txt`](../../tools/tunamail/touchpoints.txt);
   `tools/tunamail/check-touchpoints.sh` fails when the fork modifies an upstream file that is not
-  listed, and the upstream-sync workflow runs it after every merge. Today the list is one file:
-  `settings.gradle.kts`, which includes `:app-tunamail`.
+  listed, and the upstream-sync workflow runs it after every merge. `settings.gradle.kts` applies
+  `tools/tunamail/tunamail.settings.gradle.kts`, which includes the fork's modules; the rest of the
+  list is the provider-neutral seams the native Tuta and Proton accounts need in account setup
+  ([providers.md](providers.md)), each with its reason in the file.
 - **Rules for touchpoints:**
   - Keep each edit as small as the language allows: one line that refers to fork-only code, not
     inline logic.
@@ -151,3 +153,9 @@ unsigned otherwise.
 
 Upstream is Apache-2.0, and so is everything the fork adds here. Keep upstream's licence headers
 and NOTICE intact.
+
+The Tuta and Proton SDKs that `app-tunamail` links are GPL-3.0-or-later, so a Tuna Mail build that
+includes them (every build of `:app-tunamail`) is distributed under GPL-3.0-or-later as a whole; the
+fork's own source files stay Apache-2.0, which is compatible. NOTICE says so, and
+[providers.md](providers.md) lists the libraries. K-9 Mail and Thunderbird builds from this repository
+do not link them and keep upstream's licence.
