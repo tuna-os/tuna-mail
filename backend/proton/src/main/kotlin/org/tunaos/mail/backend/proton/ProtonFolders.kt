@@ -4,9 +4,16 @@ import com.fsck.k9.backend.api.BackendStorage
 import com.fsck.k9.backend.api.FolderInfo
 import com.fsck.k9.backend.api.updateFolders
 import com.fsck.k9.mail.FolderType
+import net.thunderbird.backend.api.folder.RemoteFolderCreationOutcome.Error
+import net.thunderbird.backend.api.folder.RemoteFolderCreationOutcome.Success
+import net.thunderbird.components.core.outcome.Outcome
+import net.thunderbird.core.common.exception.MessagingException
+import net.thunderbird.legacy.logging.Log
 import org.tunaos.proton.ProtonFolder
 import org.tunaos.proton.ProtonFolderKind
 import org.tunaos.proton.ProtonFolderRole
+
+private const val TAG = "ProtonFolderList"
 
 /** Proton's well-known system label ids. */
 internal object ProtonFolderIds {
@@ -34,6 +41,41 @@ internal class ProtonFolderList(
     fun refresh() {
         val folders = protonCall { api.sync(limit = 1, folder = ProtonFolderIds.INBOX).folders }
         mirror(folders)
+    }
+
+    /**
+     * Creates a user folder at [path] (`Parent/Child`; the parent must be a user folder) and
+     * mirrors the new list. A folder or label already at [path] counts as created unless
+     * [mustCreate].
+     */
+    suspend fun create(path: String, mustCreate: Boolean): Outcome<Success, Error> = try {
+        createOrFind(path, mustCreate)
+    } catch (e: MessagingException) {
+        Log.w(TAG, e, "Could not create a Proton folder")
+        Outcome.failure(Error.FailedToCreateRemoteFolder(e.message ?: "Proton refused the folder"))
+    }
+
+    private suspend fun createOrFind(path: String, mustCreate: Boolean): Outcome<Success, Error> {
+        val folders = protonSuspendCall { api.sync(limit = 1, folder = ProtonFolderIds.INBOX).folders }
+        val byId = folders.associateBy { it.id }
+        val name = path.substringAfterLast(FOLDER_PATH_DELIMITER)
+        val parentPath = path.substringBeforeLast(FOLDER_PATH_DELIMITER, missingDelimiterValue = "")
+        val parent = parentPath.takeIf { it.isNotEmpty() }?.let { wanted ->
+            folders.firstOrNull { it.kind == ProtonFolderKind.FOLDER && pathOf(it, byId) == wanted }?.id
+        }
+        return when {
+            path in byId || folders.any { pathOf(it, byId) == path } ->
+                if (mustCreate) Outcome.failure(Error.AlreadyExists) else Outcome.success(Success.AlreadyExists)
+
+            name.isBlank() || (parentPath.isNotEmpty() && parent == null) ->
+                Outcome.failure(Error.FailedToCreateRemoteFolder("Proton has no folder $parentPath for $name"))
+
+            else -> {
+                val created = protonSuspendCall { api.createFolder(name, parent) }
+                mirror(folders + created)
+                Outcome.success(Success.Created)
+            }
+        }
     }
 
     /** The folders that are user labels, as of the last refresh. */

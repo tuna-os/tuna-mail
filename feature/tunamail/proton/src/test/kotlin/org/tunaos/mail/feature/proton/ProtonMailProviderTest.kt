@@ -34,6 +34,14 @@ class ProtonMailProviderTest {
     }
 
     @Test
+    fun `custom domains are recognized by Proton's mail servers`() {
+        assertThat(provider.isProviderMailServer("mail.protonmail.ch")).isTrue()
+        assertThat(provider.isProviderMailServer("mailsec.protonmail.ch")).isTrue()
+        assertThat(provider.isProviderMailServer("mail.tutanota.de")).isFalse()
+        assertThat(provider.isProviderMailServer("mx.example.com")).isFalse()
+    }
+
+    @Test
     fun `revoke closes a Proton session and ignores anything else`() = runTest {
         provider.revoke("""{"login":"a@tuta.com","encrypted_passphrase_key":"x"}""")
         provider.revoke("not json")

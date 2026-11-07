@@ -4,8 +4,13 @@ import com.fsck.k9.backend.api.BackendStorage
 import com.fsck.k9.backend.api.FolderInfo
 import com.fsck.k9.backend.api.updateFolders
 import com.fsck.k9.mail.FolderType
+import net.thunderbird.backend.api.folder.RemoteFolderCreationOutcome.Error
+import net.thunderbird.backend.api.folder.RemoteFolderCreationOutcome.Success
+import net.thunderbird.components.core.outcome.Outcome
+import net.thunderbird.core.common.exception.MessagingException
 import net.thunderbird.feature.mail.folder.api.FOLDER_DEFAULT_PATH_DELIMITER
 import net.thunderbird.feature.mail.folder.api.FolderPathDelimiter
+import net.thunderbird.legacy.logging.Log
 import org.tunaos.tuta.Folder
 import org.tunaos.tuta.FolderRole
 
@@ -24,6 +29,39 @@ internal class TutaFolders(
         val page = connection.call { sync(it, folder = null, limit = 1, offset = 0) }
         update(page.folders)
         return FOLDER_DEFAULT_PATH_DELIMITER
+    }
+
+    /**
+     * Creates the folder at [path] (`Parent/Child`; the parent must exist) and mirrors the new tree. A folder already
+     * at [path] counts as created unless [mustCreate].
+     */
+    suspend fun create(path: String, mustCreate: Boolean): Outcome<Success, Error> = try {
+        createOrFind(path, mustCreate)
+    } catch (e: MessagingException) {
+        Log.w(TAG, e, "Could not create a Tuta folder")
+        Outcome.failure(Error.FailedToCreateRemoteFolder(e.message ?: "Tuta refused the folder"))
+    }
+
+    private suspend fun createOrFind(path: String, mustCreate: Boolean): Outcome<Success, Error> {
+        val tree = connection.suspendCall { sync(it, folder = null, limit = 1, offset = 0) }.folders
+        val byId = tree.associateBy { it.id }
+        val byPath = tree.associateBy { it.path(byId) }
+        val name = path.substringAfterLast(FOLDER_DEFAULT_PATH_DELIMITER)
+        val parentPath = path.substringBeforeLast(FOLDER_DEFAULT_PATH_DELIMITER, missingDelimiterValue = "")
+        val parent = if (parentPath.isEmpty()) null else byPath[parentPath]?.id
+        return when {
+            path in byPath || path in byId ->
+                if (mustCreate) Outcome.failure(Error.AlreadyExists) else Outcome.success(Success.AlreadyExists)
+
+            name.isBlank() || (parentPath.isNotEmpty() && parent == null) ->
+                Outcome.failure(Error.FailedToCreateRemoteFolder("Tuta has no folder $parentPath for $name"))
+
+            else -> {
+                connection.suspendCall { createFolder(it, name, parent) }
+                update(connection.suspendCall { sync(it, folder = null, limit = 1, offset = 0) }.folders)
+                Outcome.success(Success.Created)
+            }
+        }
     }
 
     /** Takes the tree a sync page carried, so later role lookups need no request. */
@@ -89,5 +127,6 @@ internal class TutaFolders(
     private companion object {
         /** Deeper than any real tree; stops a parent loop. */
         const val MAX_DEPTH = 32
+        const val TAG = "TutaFolders"
     }
 }

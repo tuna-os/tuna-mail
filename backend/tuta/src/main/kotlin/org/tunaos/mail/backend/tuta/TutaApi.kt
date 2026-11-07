@@ -1,6 +1,7 @@
 package org.tunaos.mail.backend.tuta
 
 import kotlinx.coroutines.flow.Flow
+import org.tunaos.tuta.ContactPassword
 import org.tunaos.tuta.DraftRequest
 import org.tunaos.tuta.IdOutcome
 import org.tunaos.tuta.Label
@@ -47,9 +48,15 @@ interface TutaApi {
     suspend fun applyLabels(session: TutaSession, ids: List<String>, add: List<String>, remove: List<String>):
         List<IdOutcome>
 
+    /** Creates a folder under [parent] (a folder id), or at the top level; returns its id. */
+    suspend fun createFolder(session: TutaSession, name: String, parent: String?): String
+
     suspend fun revoke(session: TutaSession)
 
     fun watch(session: TutaSession): Flow<TutaWatchEvent>
+
+    /** Per distinct address of up to 100: whether it is outside Tuta, and the password its contact keeps. */
+    suspend fun contactPasswords(session: TutaSession, addresses: List<String>): List<ContactPassword>
 }
 
 /** [TutaApi] over the SDK's [TutaClient]. */
@@ -87,7 +94,13 @@ class SdkTutaApi(private val client: TutaClient) : TutaApi {
     override suspend fun applyLabels(session: TutaSession, ids: List<String>, add: List<String>, remove: List<String>) =
         client.applyLabels(session, ids, add, remove)
 
+    override suspend fun createFolder(session: TutaSession, name: String, parent: String?) =
+        client.createFolder(session, name, parent)
+
     override suspend fun revoke(session: TutaSession) = client.revoke(session)
 
     override fun watch(session: TutaSession) = client.watch(session)
+
+    override suspend fun contactPasswords(session: TutaSession, addresses: List<String>) =
+        client.contactPasswords(session, addresses)
 }

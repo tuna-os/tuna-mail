@@ -1,6 +1,6 @@
 # Maintaining the Tuna Mail fork
 
-This repository, tuna-os/thunderbird-android, is a soft fork of
+This repository, tuna-os/tuna-mail, is a soft fork of
 [thunderbird/thunderbird-android](https://github.com/thunderbird/thunderbird-android). It adds a
 third app, **Tuna Mail** (`org.tunaos.mail`, module `:app-tunamail`), the Android mail client of
 TunaOS, next to upstream's K-9 Mail and Thunderbird for Android, built from the same shared code.
@@ -45,7 +45,8 @@ and no Tuna Mail app. If it would, it goes upstream.
   listed, and the upstream-sync workflow runs it after every merge. `settings.gradle.kts` applies
   `tools/tunamail/tunamail.settings.gradle.kts`, which includes the fork's modules; the rest of the
   list is the provider-neutral seams the native Tuta and Proton accounts need in account setup
-  ([providers.md](providers.md)), each with its reason in the file.
+  ([providers.md](providers.md)) and upstream fixes carried before upstream merges them
+  ([upstream-candidates.md](upstream-candidates.md)), each with its reason in the file.
 - **Rules for touchpoints:**
   - Keep each edit as small as the language allows: one line that refers to fork-only code, not
     inline logic.

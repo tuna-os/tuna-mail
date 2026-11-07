@@ -181,6 +181,17 @@ class MessageListAdapter internal constructor(
         return messagesMap[uniqueId]
     }
 
+    /**
+     * The message a row shows, for both the XML and the Compose message row; `null` for any other row.
+     */
+    fun getItem(viewHolder: RecyclerView.ViewHolder): MessageListItem? {
+        return when (viewHolder) {
+            is MessageViewHolder -> getItemById(viewHolder.uniqueId)
+            is ComposableMessageViewHolder -> getItemById(viewHolder.uniqueId)
+            else -> null
+        }
+    }
+
     fun getItem(messageReference: MessageReference): MessageListItem? {
         return viewItems
             .filterMessageListItem()

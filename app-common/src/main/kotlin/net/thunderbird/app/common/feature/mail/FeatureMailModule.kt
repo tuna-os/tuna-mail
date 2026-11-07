@@ -1,5 +1,6 @@
 package net.thunderbird.app.common.feature.mail
 
+import com.fsck.k9.backend.BackendManager
 import com.fsck.k9.backends.ImapBackendFactory
 import com.fsck.k9.mailstore.DefaultSpecialFolderUpdater
 import net.thunderbird.app.common.feature.mail.message.mailMessageModule
@@ -36,6 +37,7 @@ internal val appCommonFeatureMailModule = module {
         RemoteFolderCreatorResolver(
             accountManager = get(),
             imapFactory = get(),
+            backendFolderCreator = { get<BackendManager>().getBackend(it) as? RemoteFolderCreator },
         )
     }
 }

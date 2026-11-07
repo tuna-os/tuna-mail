@@ -38,14 +38,21 @@ import net.thunderbird.components.ui.bolt.template.Scaffold
 import net.thunderbird.components.ui.bolt.theme.BoltTheme
 import net.thunderbird.core.common.provider.BrandNameProvider
 import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
+import org.tunaos.mail.provider.TunaSignInTarget
 
-/** Signs a Tuta account in during setup: password, then a TOTP code if the account asks for one. */
+/**
+ * Signs a Tuta account in, one being set up or an existing one signing in again ([target]): password, then a TOTP code
+ * if the account asks for one.
+ */
 @Composable
 internal fun TutaSignInScreen(
+    target: TunaSignInTarget,
     onBack: () -> Unit,
     onSignedIn: () -> Unit,
-    viewModel: TutaSignInViewModel,
     modifier: Modifier = Modifier,
+    viewModel: TutaSignInViewModel = koinViewModel { parametersOf(target) },
     brandNameProvider: BrandNameProvider = koinInject(),
 ) {
     val state by viewModel.state.collectAsState()

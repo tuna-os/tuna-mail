@@ -14,4 +14,14 @@
     <string name="tuta_sign_in_error_network">Could not reach Tuta. Check your connection and try again.</string>
     <string name="tuta_sign_in_error_client_outdated">Tuta no longer accepts this version of the app. Update it to sign in.</string>
     <string name="tuta_sign_in_error_unknown">Signing in to Tuta failed. Try again later.</string>
+    <string name="tuta_notices_channel_name">Tuta account notices</string>
+    <string name="tuta_flag_label_notice_title">Flags stay on this device</string>
+    <string name="tuta_flag_label_notice_text">Tuta has no star, so flags are kept as a label, and %1$s cannot create the \"Flagged\" label: its plan has no room for another label. Tap to use one of the account\'s labels for flags instead.</string>
+    <string name="tuta_flag_label_title">Label for flags</string>
+    <string name="tuta_flag_label_explanation">Messages you flag get this label, in Tuna Mail and in Tuta\'s own apps, and messages with it show as flagged.</string>
+    <string name="tuta_flag_label_loading">Loading the account\'s labels…</string>
+    <string name="tuta_flag_label_error">Could not load the account\'s labels. Check your connection and try again.</string>
+    <string name="tuta_flag_label_none">This account has no labels. Create one in Tuta, or delete one you no longer need, then flag a message again.</string>
+    <string name="tuta_flag_label_cancel">Cancel</string>
+    <string name="tuta_flag_label_use">Use for flags</string>
 </resources>

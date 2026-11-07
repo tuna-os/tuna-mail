@@ -10,15 +10,20 @@ import assertk.assertions.isFalse
 import assertk.assertions.isNull
 import assertk.assertions.isSameInstanceAs
 import assertk.assertions.isTrue
+import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import net.thunderbird.components.core.logging.testing.TestLogger
+import net.thunderbird.legacy.logging.Log
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import org.tunaos.mail.provider.SetupSignInTarget
 import org.tunaos.mail.provider.TunaSignInHandoff
+import org.tunaos.mail.provider.TunaSignInTarget
 import org.tunaos.mail.provider.tunaServerSettings
 import org.tunaos.tuta.TutaErrorCode
 
@@ -33,11 +38,14 @@ class TutaSignInViewModelTest {
         ),
     )
     private val handoff = TunaSignInHandoff()
-    private val viewModel by lazy { TutaSignInViewModel(signIn, repository, handoff) }
+    private val viewModel by lazy {
+        TutaSignInViewModel(signIn, SetupSignInTarget(repository, handoff, TUTA_SERVER_TYPE))
+    }
 
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
+        Log.logger = TestLogger()
     }
 
     @After
@@ -179,6 +187,39 @@ class TutaSignInViewModelTest {
     }
 
     @Test
+    fun `an existing account signing in again asks for the password and keeps the new session`() {
+        val target = FakeTarget()
+        val viewModel = TutaSignInViewModel(signIn, target)
+        signIn.results += TutaSignInResult.SignedIn(SESSION)
+
+        viewModel.start()
+        assertThat(signIn.calls).isEmpty()
+        assertThat(viewModel.state.value.email).isEqualTo(EMAIL)
+
+        viewModel.onPasswordChanged(PASSWORD)
+        viewModel.submit()
+
+        assertThat(signIn.calls).containsExactly(Call(EMAIL, PASSWORD, totp = null, pending = null))
+        assertThat(target.completed).containsExactly(SESSION)
+        assertThat(viewModel.state.value.isSignedIn).isTrue()
+    }
+
+    @Test
+    fun `a session that cannot be saved is reported instead of finishing the sign-in`() {
+        val target = FakeTarget(failure = IOException("disk full"))
+        val viewModel = TutaSignInViewModel(signIn, target)
+        signIn.results += TutaSignInResult.SignedIn(SESSION)
+        viewModel.start()
+
+        viewModel.onPasswordChanged(PASSWORD)
+        viewModel.submit()
+
+        assertThat(viewModel.state.value.isSignedIn).isFalse()
+        assertThat(viewModel.state.value.isLoading).isFalse()
+        assertThat(viewModel.state.value.error).isEqualTo(TutaSignInError.UNKNOWN)
+    }
+
+    @Test
     fun `Tuta's own domains are recognized`() {
         val tuta = listOf("tuta.com", "TUTA.IO", "tutanota.com", "tutanota.de", "tutamail.com", "keemail.me")
         val other = listOf("example.com", "tuta.com.evil.test", "nottuta.com", "tutanota")
@@ -201,6 +242,17 @@ class TutaSignInViewModelTest {
         ): TutaSignInResult {
             calls += Call(email, password, totp, pending)
             return results.removeFirst()
+        }
+    }
+
+    private class FakeTarget(private val failure: IOException? = null) : TunaSignInTarget {
+        val completed = mutableListOf<String>()
+        override val email = EMAIL
+        override val password = ""
+
+        override suspend fun complete(session: String) {
+            failure?.let { throw it }
+            completed += session
         }
     }
 

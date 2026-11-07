@@ -25,6 +25,7 @@ import com.fsck.k9.mail.AuthType
 import com.fsck.k9.mail.ConnectionSecurity
 import com.fsck.k9.mail.ServerSettings
 import com.fsck.k9.ui.R
+import com.fsck.k9.ui.messagelist.item.MessageListViewHolder
 import com.google.android.material.textview.MaterialTextView
 import kotlin.time.ExperimentalTime
 import net.thunderbird.core.android.account.Identity
@@ -33,6 +34,7 @@ import net.thunderbird.core.android.testing.RobolectricTest
 import net.thunderbird.core.featureflag.FeatureFlagKey
 import net.thunderbird.core.featureflag.FeatureFlagProvider
 import net.thunderbird.core.featureflag.FeatureFlagResult
+import net.thunderbird.core.featureflag.keys.GeneratedFeatureFlagKey
 import net.thunderbird.core.preference.display.visualSettings.message.list.MessageListDateTimeFormat
 import net.thunderbird.core.preference.display.visualSettings.message.list.UiDensity
 import net.thunderbird.core.ui.theme.api.FeatureThemeProvider
@@ -391,6 +393,36 @@ class MessageListAdapterTest : RobolectricTest() {
         assertThat(view.secondLineView.textSize).isEqualTo(22f)
     }
 
+    @Test
+    fun getItem_withXmlMessageRow_shouldReturnItsMessage() {
+        val adapter = createAdapter(useComposeRows = false)
+        val messageListItem = createMessageListItem(uniqueId = 7L)
+
+        val holder = adapter.createAndBindViewHolder(messageListItem)
+
+        assertThat(adapter.getItem(holder)).isEqualTo(messageListItem)
+    }
+
+    @Test
+    fun getItem_withComposeMessageRow_shouldReturnItsMessage() {
+        val adapter = createAdapter(useComposeRows = true)
+        val messageListItem = createMessageListItem(uniqueId = 7L)
+
+        val holder = adapter.createAndBindViewHolder(messageListItem)
+
+        assertThat(adapter.getItem(holder)).isEqualTo(messageListItem)
+    }
+
+    @Test
+    fun getItem_withFooterRow_shouldReturnNull() {
+        val adapter = createAdapter()
+        adapter.viewItems = listOf(MessageListViewItem.Footer("irrelevant"))
+        val holder = adapter.onCreateViewHolder(LinearLayout(context), adapter.getItemViewType(0))
+        adapter.onBindViewHolder(holder, 0)
+
+        assertThat(adapter.getItem(holder)).isNull()
+    }
+
     fun createFontSizes(
         subject: Int = FONT_DEFAULT,
         sender: Int = FONT_DEFAULT,
@@ -416,6 +448,7 @@ class MessageListAdapterTest : RobolectricTest() {
         showAccountIndicator: Boolean = false,
         density: UiDensity = UiDensity.Default,
         dateTimeFormat: MessageListDateTimeFormat = DATE_TIME_FORMAT,
+        useComposeRows: Boolean = false,
     ): MessageListAdapter {
         val appearance = MessageListAppearance(
             fontSizes,
@@ -439,7 +472,7 @@ class MessageListAdapterTest : RobolectricTest() {
             listItemListener = listItemListener,
             appearance = { appearance },
             themeProvider = FakeThemeProvider(),
-            featureFlagProvider = FakeFeatureFlagProvider(),
+            featureFlagProvider = FakeFeatureFlagProvider(useComposeRows),
             avatarMonogramCreator = mock(),
             contactRepository = mock(),
             formatDate = { "12:34" },
@@ -540,10 +573,14 @@ class MessageListAdapterTest : RobolectricTest() {
     }
 
     fun MessageListAdapter.createAndBindView(item: MessageListItem = createMessageListItem()): View {
+        return createAndBindViewHolder(item).itemView
+    }
+
+    fun MessageListAdapter.createAndBindViewHolder(item: MessageListItem): MessageListViewHolder {
         viewItems = listOf(MessageListViewItem.Message(item))
         val holder = onCreateViewHolder(LinearLayout(context), 0)
         onBindViewHolder(holder, 0)
-        return holder.itemView
+        return holder
     }
 
     fun secondLine(senderOrSubject: String, preview: String) = "$senderOrSubject – $preview"
@@ -608,8 +645,13 @@ class MessageListAdapterTest : RobolectricTest() {
         }
     }
 
-    private class FakeFeatureFlagProvider : FeatureFlagProvider {
-        // Disabled as the test is primarily concerned with the XML based UI
-        override fun provide(key: FeatureFlagKey): FeatureFlagResult = FeatureFlagResult.Disabled
+    private class FakeFeatureFlagProvider(private val useComposeRows: Boolean = false) : FeatureFlagProvider {
+        // Disabled unless a test asks for Compose rows, as the test is primarily concerned with the XML based UI
+        override fun provide(key: FeatureFlagKey): FeatureFlagResult =
+            if (useComposeRows && key.key == GeneratedFeatureFlagKey.USE_COMPOSE_FOR_MESSAGE_LIST_ITEMS.key) {
+                FeatureFlagResult.Enabled
+            } else {
+                FeatureFlagResult.Disabled
+            }
     }
 }

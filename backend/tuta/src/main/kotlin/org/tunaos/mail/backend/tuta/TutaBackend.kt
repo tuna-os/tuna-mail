@@ -7,9 +7,16 @@ import com.fsck.k9.backend.api.BackendStorage
 import com.fsck.k9.backend.api.SyncConfig
 import com.fsck.k9.backend.api.SyncListener
 import com.fsck.k9.mail.BodyFactory
+import com.fsck.k9.mail.FolderType
 import com.fsck.k9.mail.Message
 import com.fsck.k9.mail.Part
+import com.fsck.k9.mail.folders.FolderServerId
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import net.thunderbird.backend.api.folder.RemoteFolderCreationOutcome
+import net.thunderbird.backend.api.folder.RemoteFolderCreator
+import net.thunderbird.components.core.outcome.Outcome
 import net.thunderbird.core.common.exception.MessagingException
 import net.thunderbird.core.common.mail.Flag
 import net.thunderbird.feature.mail.folder.api.FolderPathDelimiter
@@ -17,19 +24,22 @@ import net.thunderbird.feature.mail.folder.api.FolderPathDelimiter
 /**
  * A Tuta account, through the Tuta SDK ([TutaApi]): folders are Tuta's folder tree, a message's server id is its
  * Tuta mail id, mail is read decrypted and rebuilt as MIME ([TutaMime]), and sending and drafts go through Tuta's
- * own operations ([TutaOutgoing]). Push follows Tuta's event bus ([TutaPusher]).
+ * own operations ([TutaOutgoing]). Push follows Tuta's event bus ([TutaPusher]). It creates its own folders
+ * ([RemoteFolderCreator]).
  */
 @Suppress("TooManyFunctions")
 class TutaBackend(
     backendStorage: BackendStorage,
     api: TutaApi,
     sessions: TutaSessionSource,
-) : Backend {
+    notices: TutaNotices = TutaNotices {},
+    passwords: TutaRecipientPasswords = TutaRecipientPasswords(),
+) : Backend, RemoteFolderCreator {
     private val connection = TutaConnection(api, sessions)
     private val folders = TutaFolders(backendStorage, connection)
-    private val labels = TutaLabels(connection)
+    private val labels = TutaLabels(backendStorage, connection, notices)
     private val tutaSync = TutaSync(backendStorage, connection, folders, labels)
-    private val commands = TutaCommands(connection, folders, labels)
+    private val commands = TutaCommands(connection, folders, labels, passwords)
 
     override val supportsFlags = true
     override val supportsExpunge = false
@@ -42,6 +52,14 @@ class TutaBackend(
     override val isPushCapable = true
 
     override fun refreshFolderList(): FolderPathDelimiter = folders.refreshFolderList()
+
+    /** Creates the folder at the path [folderServerId] names; Tuta has no folder types to give it. */
+    override suspend fun create(
+        folderServerId: FolderServerId,
+        mustCreate: Boolean,
+        folderType: FolderType,
+    ): Outcome<RemoteFolderCreationOutcome.Success, RemoteFolderCreationOutcome.Error> =
+        withContext(Dispatchers.IO) { folders.create(folderServerId.serverId, mustCreate) }
 
     override fun sync(folderServerId: String, syncConfig: SyncConfig, listener: SyncListener) {
         tutaSync.sync(folderServerId, syncConfig, listener)
@@ -89,6 +107,13 @@ class TutaBackend(
         messageServerIds: List<String>,
     ): Map<String, String> = commands.move(targetFolderServerId, messageServerIds, markAsRead = true)
 
+    /**
+     * Never called: [supportsCopy] is false, which hides the copy action. Tuta has no server-side copy, and rebuilding
+     * the mail as an import into the target folder is not a copy worth offering: import is refused below the Legend
+     * and Unlimited plans (so the action would fail for most accounts, and a backend cannot vary [supportsCopy] by
+     * plan), and an imported mail is a second, separate mail, without the original's labels, that counts twice
+     * against the account's storage.
+     */
     override fun copyMessages(
         sourceFolderServerId: String,
         targetFolderServerId: String,

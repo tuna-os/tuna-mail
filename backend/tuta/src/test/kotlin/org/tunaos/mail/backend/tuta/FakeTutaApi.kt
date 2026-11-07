@@ -3,6 +3,7 @@ package org.tunaos.mail.backend.tuta
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.consumeAsFlow
+import org.tunaos.tuta.ContactPassword
 import org.tunaos.tuta.DraftRequest
 import org.tunaos.tuta.Folder
 import org.tunaos.tuta.FolderRole
@@ -134,11 +135,30 @@ class FakeTutaApi(
         return ids.map { IdOutcome(it) }
     }
 
+    override suspend fun createFolder(session: TutaSession, name: String, parent: String?): String {
+        failIfAsked()
+        val id = "folder-${folders.size + 1}"
+        folders = folders + Folder(id = id, role = FolderRole.OTHER, label = name, parent = parent)
+        return id
+    }
+
     override suspend fun revoke(session: TutaSession) {
         revoked += session
     }
 
     override fun watch(session: TutaSession): Flow<TutaWatchEvent> = watchEvents.consumeAsFlow()
+
+    /** What `contact_passwords` says per address, by address in lower case; unlisted addresses are on Tuta. */
+    val contacts = mutableMapOf<String, ContactPassword>()
+    val contactPasswordCalls = mutableListOf<List<String>>()
+
+    override suspend fun contactPasswords(session: TutaSession, addresses: List<String>): List<ContactPassword> {
+        failIfAsked()
+        contactPasswordCalls += addresses
+        return addresses.distinctBy { it.lowercase() }.map {
+            contacts[it.lowercase()] ?: ContactPassword(address = it, external = false)
+        }
+    }
 
     private fun failIfAsked() {
         failures.removeFirstOrNull()?.let { throw TutaException.of(it) }

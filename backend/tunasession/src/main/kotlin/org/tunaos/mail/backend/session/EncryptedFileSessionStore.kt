@@ -56,6 +56,10 @@ class EncryptedFileSessionStore(
         }
     }
 
+    override fun replace(accountUuid: String, session: String): String? = synchronized(lock) {
+        get(accountUuid).also { put(accountUuid, session) }
+    }
+
     override fun remove(accountUuid: String): Unit = synchronized(lock) {
         fileFor(accountUuid).delete()
     }

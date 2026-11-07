@@ -80,7 +80,7 @@ ENV GOCACHE=/cache/gocache
 RUN mkdir -p /cache/gradle /cache/gomod /cache/gocache /work
 
 LABEL org.opencontainers.image.title="tunamail-build-env" \
-      org.opencontainers.image.source="https://github.com/tuna-os/thunderbird-android" \
+      org.opencontainers.image.source="https://github.com/tuna-os/tuna-mail" \
       org.opencontainers.image.description="Build environment for Tuna Mail (Android SDK, NDK, Rust, Go)"
 
 WORKDIR /work

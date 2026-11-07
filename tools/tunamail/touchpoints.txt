@@ -18,10 +18,37 @@ feature/account/setup/src/main/kotlin/app/k9mail/feature/account/setup/ui/autodi
 #   as an IMAP bridge.
 feature/account/setup/src/main/kotlin/app/k9mail/feature/account/setup/AccountSetupModule.kt
 # - AccountSetupExtension (a new file beside it): account types whose sign-in the setup cannot validate get
-#   their own sign-in screens between the password step and the account options.
+#   their own sign-in screens between the password step and the account options, and a manual setup can offer
+#   them before the IMAP/POP3 server settings (an address on a custom domain).
 feature/account/setup/src/main/kotlin/app/k9mail/feature/account/setup/navigation/AccountSetupNavHost.kt
+# - AccountEditExtension (a new file beside it): such an account's server settings, opened from the account
+#   settings or the "authentication failed" notification, are its own screens (signing in again).
+feature/account/edit/src/main/kotlin/app/k9mail/feature/account/edit/navigation/DefaultAccountEditNavigation.kt
 # - Account types with a backend of their own delete on the server instead of failing an assertion.
 legacy/common/src/main/java/com/fsck/k9/account/DefaultDeletePolicyProvider.kt
+# - Settings export writes such an account's server type instead of failing an assertion, and the import does
+#   not ask for a password the account type never uses.
+legacy/core/src/main/java/com/fsck/k9/preferences/ServerTypeConverter.kt
+legacy/core/src/main/java/com/fsck/k9/preferences/SettingsImporter.kt
+# - ComposeExtension (a new file in feature/mail/message/composer/api) and ComposeExtensionHost (a new file
+#   beside MessageCompose) let an account type add its own send options to the composer: a menu item, a check
+#   before the send, headers on the built message, a draft's headers read back. One-line calls into the host;
+#   Tuta's confidential mail (password-protected delivery to recipients outside Tuta) is the fork's use.
+legacy/ui/legacy/src/main/java/com/fsck/k9/activity/MessageCompose.java
+# - A backend that implements RemoteFolderCreator creates its own folders: the resolver asks the account's backend
+#   for any server type it has no factory for, instead of always giving up.
+app-common/src/main/kotlin/net/thunderbird/app/common/feature/mail/RemoteFolderCreatorResolver.kt
+app-common/src/main/kotlin/net/thunderbird/app/common/feature/mail/FeatureMailModule.kt
 
 # Says that Tuna Mail builds link the GPL-3.0-or-later Tuta and Proton SDKs (appended paragraph).
 NOTICE
+
+# Message-list fixes carried ahead of upstream, each an upstream pull request draft in
+# docs/tunamail/upstream-candidates.md; drop these lines when upstream merges them.
+# - Compose rows show the sender's name, and keyboard actions find the focused Compose row (#11).
+legacy/ui/legacy/src/main/java/com/fsck/k9/ui/messagelist/item/MessageItemContent.kt
+legacy/ui/legacy/src/main/java/com/fsck/k9/ui/messagelist/MessageListAdapter.kt
+legacy/ui/legacy/src/main/java/com/fsck/k9/ui/messagelist/LegacyMessageListFragment.kt
+legacy/ui/legacy/src/test/java/com/fsck/k9/ui/messagelist/MessageListAdapterTest.kt
+# - The new message list flags by database id, not by the server UID (#12).
+legacy/ui/legacy/src/main/java/com/fsck/k9/ui/messagelist/MessageListFragment.kt

@@ -14,6 +14,12 @@ interface TunaSessionStore {
     /** Saves [session] for [accountUuid], replacing any earlier one. */
     fun put(accountUuid: String, session: String)
 
+    /**
+     * Saves [session] for [accountUuid], as [put] does, and returns the session it replaced (null when there was none),
+     * for an existing account that signed in again. The caller closes the replaced session on the server.
+     */
+    fun replace(accountUuid: String, session: String): String?
+
     /** Forgets the session of [accountUuid]; nothing happens when there is none. */
     fun remove(accountUuid: String)
 
