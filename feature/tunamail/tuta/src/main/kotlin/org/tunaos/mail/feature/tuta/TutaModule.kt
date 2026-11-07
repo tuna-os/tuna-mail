@@ -15,7 +15,7 @@ import org.tunaos.tuta.TutaClient
 val featureTunaMailTutaModule = module {
     // One client for the app; it loads the native library on first use.
     single<TutaApi> { SdkTutaApi(TutaClient(clientName = get<String>(named("ClientInfoAppName")))) }
-    single<TutaSignIn> { SdkTutaSignIn(api = get()) }
+    single<TutaSignIn> { SdkTutaSignIn(api = get(), scope = get(named("AppCoroutineScope"))) }
 
     single<TunaMailProvider>(named(TUTA_SERVER_TYPE)) {
         TutaProvider(
