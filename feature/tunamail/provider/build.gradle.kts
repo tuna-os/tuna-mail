@@ -12,6 +12,8 @@ dependencies {
     api(projects.feature.account.setup)
     api(projects.feature.autodiscovery.api)
     api(projects.core.android.account)
+    api(projects.feature.account.api)
+    api(projects.feature.mail.account.api)
     api(projects.core.ui.navigation)
 
     implementation(projects.legacy.logging)
