@@ -1,0 +1,86 @@
+# Tuna Mail build environment: everything needed to build the Android app and
+# the native Tuta (Rust) and Proton (Go) libraries it links, in one image.
+#
+#   podman build -t localhost/tunamail-build-env:latest tools/build-env
+#   tools/build-env/run.sh ./gradlew :app-tunamail:assembleDebug
+#
+# Every version is pinned here; bump them deliberately and rebuild the image.
+# The SDK levels follow build-plugin/.../ProjectConfig.kt (compileSdk 37) and
+# the JDK follows .java-version.
+
+FROM docker.io/library/eclipse-temurin:21-jdk-noble
+
+# Android SDK components (see `sdkmanager --list`). The build tools are AGP 9.5's
+# default; without them AGP downloads them into the (throwaway) container on every run.
+ARG CMDLINE_TOOLS_ZIP=commandlinetools-linux-16111833_latest.zip
+ARG CMDLINE_TOOLS_SHA1=e025545c62a8e64c7559119566a569fb1dec5f60
+ARG ANDROID_PLATFORM=platforms;android-37.0
+ARG ANDROID_BUILD_TOOLS=build-tools;36.0.0
+ARG ANDROID_NDK_VERSION=28.2.13676358
+
+# Native toolchains for the backend libraries.
+ARG RUST_VERSION=1.99.1
+ARG CARGO_NDK_VERSION=4.1.2
+ARG GO_VERSION=1.26.10
+ARG GO_SHA256=ccfe7ae822d2c2f41f4fe7c956199967a4dac22d0ee0d2b2bfdb440aab3b20c5
+ARG GOMOBILE_VERSION=v0.0.0-20261011034528-197770444867
+
+ENV DEBIAN_FRONTEND=noninteractive
+# libgl1 and libfontconfig1: Skia (skiko) loads them in the Compose Multiplatform JVM tests.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      build-essential ca-certificates curl file git libfontconfig1 libgl1 pkg-config \
+      procps python3 rsync unzip xz-utils zip \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV ANDROID_HOME=/opt/android-sdk
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+ENV ANDROID_NDK_HOME=/opt/android-sdk/ndk/${ANDROID_NDK_VERSION}
+ENV ANDROID_NDK_ROOT=/opt/android-sdk/ndk/${ANDROID_NDK_VERSION}
+RUN mkdir -p "$ANDROID_HOME/cmdline-tools" \
+ && curl -fsSLo /tmp/cmdline-tools.zip "https://dl.google.com/android/repository/${CMDLINE_TOOLS_ZIP}" \
+ && echo "${CMDLINE_TOOLS_SHA1}  /tmp/cmdline-tools.zip" | sha1sum -c - \
+ && unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools \
+ && mv /tmp/cmdline-tools/cmdline-tools "$ANDROID_HOME/cmdline-tools/latest" \
+ && rm -rf /tmp/cmdline-tools /tmp/cmdline-tools.zip \
+ && yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null \
+ && "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
+      platform-tools "${ANDROID_PLATFORM}" "${ANDROID_BUILD_TOOLS}" "ndk;${ANDROID_NDK_VERSION}" \
+      > /dev/null
+ENV PATH=${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${PATH}
+
+# Rust with the two Android targets the app ships (arm64-v8a, x86_64).
+ENV RUSTUP_HOME=/opt/rustup
+ENV CARGO_HOME=/opt/cargo
+ENV PATH=/opt/cargo/bin:${PATH}
+RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal \
+      --default-toolchain "${RUST_VERSION}" \
+      --target aarch64-linux-android --target x86_64-linux-android \
+ && cargo install --locked "cargo-ndk@${CARGO_NDK_VERSION}" \
+ && rm -rf /opt/cargo/registry /opt/cargo/git \
+ && chmod -R a+rwX /opt/cargo /opt/rustup
+
+# Go and gomobile for the Proton library.
+ENV GOROOT=/usr/local/go
+ENV GOPATH=/opt/go
+ENV PATH=/usr/local/go/bin:/opt/go/bin:${PATH}
+RUN curl -fsSLo /tmp/go.tar.gz "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" \
+ && echo "${GO_SHA256}  /tmp/go.tar.gz" | sha256sum -c - \
+ && tar -C /usr/local -xzf /tmp/go.tar.gz \
+ && rm /tmp/go.tar.gz \
+ && GOFLAGS=-modcacherw go install \
+      "golang.org/x/mobile/cmd/gomobile@${GOMOBILE_VERSION}" \
+      "golang.org/x/mobile/cmd/gobind@${GOMOBILE_VERSION}" \
+ && rm -rf /opt/go/pkg /root/.cache/go-build
+
+# Caches live in volumes mounted by run.sh, so the image stays immutable.
+ENV GRADLE_USER_HOME=/cache/gradle
+ENV GOMODCACHE=/cache/gomod
+ENV GOCACHE=/cache/gocache
+RUN mkdir -p /cache/gradle /cache/gomod /cache/gocache /work
+
+LABEL org.opencontainers.image.title="tunamail-build-env" \
+      org.opencontainers.image.source="https://github.com/tuna-os/thunderbird-android" \
+      org.opencontainers.image.description="Build environment for Tuna Mail (Android SDK, NDK, Rust, Go)"
+
+WORKDIR /work
