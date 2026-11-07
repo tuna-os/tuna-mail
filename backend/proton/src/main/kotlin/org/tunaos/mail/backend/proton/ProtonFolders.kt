@@ -79,11 +79,17 @@ internal class ProtonFolderList(
     private val ProtonFolder.folderType: FolderType
         get() = when (role) {
             ProtonFolderRole.INBOX -> FolderType.INBOX
+
             ProtonFolderRole.DRAFTS -> FolderType.DRAFTS
+
             ProtonFolderRole.SENT -> FolderType.SENT
+
             ProtonFolderRole.ARCHIVE -> FolderType.ARCHIVE
+
             ProtonFolderRole.JUNK -> FolderType.SPAM
+
             ProtonFolderRole.TRASH -> FolderType.TRASH
+
             ProtonFolderRole.STARRED,
             ProtonFolderRole.OTHER,
             -> FolderType.REGULAR

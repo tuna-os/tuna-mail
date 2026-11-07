@@ -43,7 +43,12 @@ internal fun HumanVerificationView(
                 webViewClient = VerifyOnlyWebViewClient()
                 val origins = setOf(HumanVerificationMessage.ORIGIN)
                 WebViewCompat.addWebMessageListener(this, HumanVerificationMessage.BRIDGE, origins) {
-                        _, message, sourceOrigin, isMainFrame, _ ->
+                        _,
+                        message,
+                        sourceOrigin,
+                        isMainFrame,
+                        _,
+                    ->
                     val data = message.data
                     if (isMainFrame && sourceOrigin.toString() == HumanVerificationMessage.ORIGIN && data != null) {
                         currentOnMessage.value(HumanVerificationMessage.parse(data))

@@ -28,12 +28,15 @@ internal fun ProtonException.toMessagingException(): MessagingException = when (
     is ProtonException.Auth,
     is ProtonException.HumanVerificationRequired,
     -> AuthenticationFailedException("Proton refused the session: $wire", this)
+
     is ProtonException.Transport -> MessagingException("Proton request failed: $wire", this)
+
     is ProtonException.SendUncertain -> MessagingException(
         "Proton may have sent this message already; not retrying ($wire)",
         true,
         this,
     )
+
     else -> MessagingException("Proton refused the request: $wire", true, this)
 }
 

@@ -1,7 +1,6 @@
 package org.tunaos.mail.feature.proton
 
 import net.thunderbird.legacy.logging.Log
-
 import org.tunaos.proton.HumanVerificationChallenge
 import org.tunaos.proton.HumanVerificationToken
 import org.tunaos.proton.ProtonClient

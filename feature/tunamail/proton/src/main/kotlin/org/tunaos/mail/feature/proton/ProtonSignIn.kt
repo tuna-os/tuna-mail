@@ -132,6 +132,7 @@ class ProtonSignIn(private val login: ProtonLogin) {
             challenge = null,
             sessionJson = outcome.sessionJson,
         )
+
         is ProtonLoginOutcome.VerificationRequired -> if (outcome.challenge == null) {
             copy(error = ProtonSignInError.HUMAN_VERIFICATION_UNAVAILABLE)
         } else {
@@ -141,33 +142,44 @@ class ProtonSignIn(private val login: ProtonLogin) {
                 challenge = outcome.challenge,
             )
         }
+
         ProtonLoginOutcome.Unreachable ->
             copy(step = inputStep(), challenge = null, error = ProtonSignInError.UNREACHABLE)
+
         is ProtonLoginOutcome.Refused -> refused(outcome.code).copy(challenge = null)
     }
 
     private fun ProtonSignInState.refused(code: ProtonErrorCode): ProtonSignInState = when (code) {
         ProtonErrorCode.SECOND_FACTOR_REQUIRED -> copy(step = ProtonSignInStep.TOTP, totp = "")
+
         ProtonErrorCode.INVALID_TOTP -> copy(step = ProtonSignInStep.TOTP, error = ProtonSignInError.INVALID_TOTP)
+
         ProtonErrorCode.SECOND_FACTOR_FAILED ->
             copy(step = ProtonSignInStep.TOTP, totp = "", error = ProtonSignInError.TOTP_REJECTED)
+
         ProtonErrorCode.MAILBOX_PASSWORD_REQUIRED -> copy(step = ProtonSignInStep.MAILBOX_PASSWORD)
+
         ProtonErrorCode.MAILBOX_PASSWORD_FAILED -> copy(
             step = ProtonSignInStep.MAILBOX_PASSWORD,
             mailboxPassword = "",
             error = ProtonSignInError.MAILBOX_PASSWORD_REJECTED,
         )
+
         ProtonErrorCode.LOGIN_FAILED -> copy(
             step = ProtonSignInStep.PASSWORD,
             totp = "",
             mailboxPassword = "",
             error = ProtonSignInError.WRONG_PASSWORD,
         )
+
         ProtonErrorCode.UNSUPPORTED_SECOND_FACTOR ->
             copy(step = ProtonSignInStep.PASSWORD, error = ProtonSignInError.UNSUPPORTED_SECOND_FACTOR)
+
         ProtonErrorCode.HUMAN_VERIFICATION_FAILED ->
             copy(step = inputStep(), error = ProtonSignInError.HUMAN_VERIFICATION_FAILED)
+
         ProtonErrorCode.CLIENT_OUTDATED -> copy(step = inputStep(), error = ProtonSignInError.CLIENT_OUTDATED)
+
         else -> copy(step = inputStep(), error = ProtonSignInError.FAILED)
     }
 

@@ -58,7 +58,9 @@ internal fun ProtonSignInContent(
                         message = stringResource(R.string.proton_sign_in_signing_in),
                         modifier = Modifier.fillMaxSize(),
                     )
+
                     state.step == ProtonSignInStep.HUMAN_VERIFICATION -> VerificationStep(state, onEvent)
+
                     else -> InputStep(state, onEvent)
                 }
             }
@@ -99,6 +101,7 @@ private fun InputStep(state: ProtonSignInState, onEvent: (ProtonSignInEvent) -> 
                     contentPadding = PaddingValues(),
                 )
             }
+
             ProtonSignInStep.MAILBOX_PASSWORD -> {
                 TextBodyMedium(text = stringResource(R.string.proton_sign_in_mailbox_password_hint))
                 TextFieldOutlinedPassword(
@@ -110,6 +113,7 @@ private fun InputStep(state: ProtonSignInState, onEvent: (ProtonSignInEvent) -> 
                 )
                 error?.let { TextBodyMedium(text = it, color = BoltTheme.colors.error) }
             }
+
             else -> {
                 TextBodyMedium(text = stringResource(R.string.proton_sign_in_password_hint))
                 PasswordInput(

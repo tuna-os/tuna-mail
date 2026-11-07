@@ -110,8 +110,11 @@ internal class ProtonBackendPusher(
         val watched = synchronized(lock) { folderServerIds }
         val folders = when (event) {
             is ProtonWatchEvent.Ready, ProtonWatchEvent.Refresh -> watched
+
             ProtonWatchEvent.FoldersChanged -> emptySet()
+
             is ProtonWatchEvent.MailChanged -> watched.filter { it == event.folder }.toSet()
+
             is ProtonWatchEvent.MessagesChanged -> {
                 val ids = event.updated + event.deleted
                 watched.filter { folder -> ids.any { isPresent(folder, it) } }.toSet()

@@ -47,7 +47,13 @@ sealed interface HumanVerificationMessage {
         private fun solved(payload: JsonObject?): Solved? {
             val token = payload?.string("token")?.takeIf { it.isNotEmpty() }
             val type = payload?.string("type")?.takeIf { it.isNotEmpty() }
-            return if (token != null && type != null) Solved(HumanVerificationToken(token = token, type = type)) else null
+            return if (token != null &&
+                type != null
+            ) {
+                Solved(HumanVerificationToken(token = token, type = type))
+            } else {
+                null
+            }
         }
 
         private fun JsonObject.string(key: String): String? =

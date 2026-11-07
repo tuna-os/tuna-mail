@@ -71,7 +71,9 @@ class ProtonBackend(
     override fun setFlag(folderServerId: String, messageServerIds: List<String>, flag: Flag, newState: Boolean) {
         when (flag) {
             Flag.SEEN -> markRead(messageServerIds, newState)
+
             Flag.FLAGGED -> batch(messageServerIds, "star") { api.star(it, newState) }
+
             // Proton sets answered/forwarded itself when a reply is sent through it.
             else -> Log.d(TAG, "Not syncing flag %s to Proton", flag)
         }
@@ -166,10 +168,12 @@ class ProtonBackend(
 
     override fun uploadMessage(folderServerId: String, message: Message): String? = when (folderServerId) {
         ProtonFolderIds.SENT -> null
+
         ProtonFolderIds.DRAFTS -> {
             val draft = ProtonOutgoingMailMapper.mapDraft(message)
             protonCall { api.saveDraft(draft) }.id
         }
+
         else -> throw MessagingException("Proton cannot store a message in folder $folderServerId", true)
     }
 
