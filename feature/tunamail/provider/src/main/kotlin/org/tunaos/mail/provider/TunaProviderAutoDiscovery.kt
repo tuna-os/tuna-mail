@@ -40,9 +40,12 @@ class TunaProviderAutoDiscovery(
     private suspend fun discoverByMailServer(domain: String, email: EmailAddress): AutoDiscoveryResult {
         val mx = lookUpMailServers(domain) ?: return AutoDiscoveryResult.NoUsableSettingsFound
         val provider = mx.hosts.firstNotNullOfOrNull { host -> providers.firstOrNull { it.isProviderMailServer(host) } }
-            ?: return AutoDiscoveryResult.NoUsableSettingsFound
-        val source = "TunaMail:${provider.serverType}:mx"
-        return settings(provider, domain, email, isTrusted = mx.isTrusted, source = source)
+        return if (provider == null) {
+            AutoDiscoveryResult.NoUsableSettingsFound
+        } else {
+            val source = "TunaMail:${provider.serverType}:mx"
+            settings(provider, domain, email, isTrusted = mx.isTrusted, source = source)
+        }
     }
 
     private suspend fun lookUpMailServers(domain: String): MxHosts? {

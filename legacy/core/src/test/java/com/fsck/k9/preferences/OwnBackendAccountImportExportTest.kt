@@ -100,7 +100,7 @@ class OwnBackendAccountImportExportTest : K9RobolectricTest() {
         assertThat(ServerTypeConverter.usesPassword("demo")).isFalse()
     }
 
-    private fun export(accountManager: LegacyAccountManager, accountUuid: String): String {
+    private suspend fun export(accountManager: LegacyAccountManager, accountUuid: String): String {
         val output = ByteArrayOutputStream()
         SettingsExporter(
             contentResolver = RuntimeEnvironment.getApplication().contentResolver,

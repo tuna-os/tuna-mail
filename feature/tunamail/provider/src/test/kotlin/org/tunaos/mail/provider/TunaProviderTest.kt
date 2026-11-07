@@ -20,6 +20,7 @@ import java.io.IOException
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import net.thunderbird.backend.api.BackendFactory
+import net.thunderbird.components.core.logging.testing.TestLogger
 import net.thunderbird.core.android.account.Identity
 import net.thunderbird.core.android.account.LegacyAccount
 import net.thunderbird.core.android.account.fake.FakeLegacyAccountManager
@@ -29,6 +30,8 @@ import net.thunderbird.feature.account.AccountIdFactory
 import net.thunderbird.feature.account.storage.profile.AvatarDto
 import net.thunderbird.feature.account.storage.profile.AvatarTypeDto
 import net.thunderbird.feature.account.storage.profile.ProfileDto
+import net.thunderbird.legacy.logging.Log
+import org.junit.Before
 import org.junit.Test
 import org.tunaos.mail.backend.session.TunaSessionStore
 
@@ -38,6 +41,11 @@ class TunaProviderTest {
     private val handoff = TunaSignInHandoff()
     private val mxLookup = FakeMxLookup()
     private val discovery = TunaProviderAutoDiscovery(listOf(provider), mxLookup)
+
+    @Before
+    fun setUp() {
+        Log.logger = TestLogger()
+    }
 
     @Test
     fun `addresses at a provider domain are discovered as that provider's accounts`() = runTest {

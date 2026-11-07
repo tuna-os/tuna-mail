@@ -34,15 +34,16 @@ class TunaAccountEditExtension(
     private fun signInTarget(accountUuid: String): ProviderTarget? {
         val accountId = AccountIdFactory.of(accountUuid)
         val account = accountManager.findById(accountId) ?: return null
-        val provider = providers.firstOrNull { it.serverType == account.incomingServerSettings.type } ?: return null
-        val target = AccountSignInTarget(
-            accountId = accountId,
-            email = account.incomingServerSettings.username,
-            provider = provider,
-            sessions = sessions,
-            backendReset = backendReset,
-        )
-        return ProviderTarget(provider, target)
+        return providers.firstOrNull { it.serverType == account.incomingServerSettings.type }?.let { provider ->
+            val target = AccountSignInTarget(
+                accountId = accountId,
+                email = account.incomingServerSettings.username,
+                provider = provider,
+                sessions = sessions,
+                backendReset = backendReset,
+            )
+            ProviderTarget(provider, target)
+        }
     }
 
     private class ProviderTarget(val provider: TunaMailProvider, val target: TunaSignInTarget)

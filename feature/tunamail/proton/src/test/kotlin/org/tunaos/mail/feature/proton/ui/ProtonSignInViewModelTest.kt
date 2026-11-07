@@ -18,6 +18,8 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import net.thunderbird.components.core.logging.testing.TestLogger
+import net.thunderbird.legacy.logging.Log
 import org.tunaos.mail.feature.proton.PROTON_SERVER_TYPE
 import org.tunaos.mail.feature.proton.ProtonLoginOutcome
 import org.tunaos.mail.feature.proton.ProtonLoginRequest
@@ -48,6 +50,7 @@ class ProtonSignInViewModelTest {
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
+        Log.logger = TestLogger()
     }
 
     @AfterTest
