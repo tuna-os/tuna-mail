@@ -1,5 +1,9 @@
 package org.tunaos.mail.feature.tuta
 
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import app.k9mail.feature.account.common.data.InMemoryAccountStateRepository
 import app.k9mail.feature.account.common.domain.entity.AccountState
 import assertk.assertThat
@@ -107,12 +111,15 @@ class TutaSignInViewModelTest {
     }
 
     @Test
-    fun `changing the password drops the pending sign-in`() {
-        signIn.results += TutaSignInResult.Failed(TutaErrorCode.SECOND_FACTOR_REQUIRED, PendingSignIn("pending"))
+    fun `changing the password cancels the pending sign-in`() {
+        val pending = PendingSignIn("pending")
+        signIn.results += TutaSignInResult.Failed(TutaErrorCode.SECOND_FACTOR_REQUIRED, pending)
         signIn.results += TutaSignInResult.Failed(TutaErrorCode.LOGIN_FAILED, null)
         viewModel.start()
 
         viewModel.onPasswordChanged("other password")
+
+        assertThat(signIn.cancelled).containsExactly(pending)
 
         assertThat(viewModel.state.value.step).isEqualTo(Step.PASSWORD)
         viewModel.submit()
@@ -121,18 +128,38 @@ class TutaSignInViewModelTest {
     }
 
     @Test
-    fun `stepping back from the code drops the pending sign-in`() {
-        signIn.results += TutaSignInResult.Failed(TutaErrorCode.SECOND_FACTOR_REQUIRED, PendingSignIn("pending"))
-        signIn.results += TutaSignInResult.Failed(TutaErrorCode.SECOND_FACTOR_REQUIRED, PendingSignIn("again"))
+    fun `stepping back from the code cancels the pending sign-in`() {
+        val first = PendingSignIn("pending")
+        val second = PendingSignIn("again")
+        signIn.results += TutaSignInResult.Failed(TutaErrorCode.SECOND_FACTOR_REQUIRED, first)
+        signIn.results += TutaSignInResult.Failed(TutaErrorCode.SECOND_FACTOR_REQUIRED, second)
         viewModel.start()
 
         assertThat(viewModel.onBack()).isTrue()
         assertThat(viewModel.state.value.step).isEqualTo(Step.PASSWORD)
+        assertThat(signIn.cancelled).containsExactly(first)
         viewModel.submit()
 
         assertThat(signIn.calls.last().pending).isNull()
         assertThat(viewModel.onBack()).isTrue()
         assertThat(viewModel.onBack()).isFalse()
+        assertThat(signIn.cancelled).containsExactly(first, second)
+    }
+
+    @Test
+    fun `leaving the screen cancels the sign-in waiting for its code`() {
+        val pending = PendingSignIn("pending")
+        signIn.results += TutaSignInResult.Failed(TutaErrorCode.SECOND_FACTOR_REQUIRED, pending)
+        val store = ViewModelStore()
+        val factory = viewModelFactory {
+            initializer { TutaSignInViewModel(signIn, SetupSignInTarget(repository, handoff, TUTA_SERVER_TYPE)) }
+        }
+        val viewModel = ViewModelProvider(store, factory)[TutaSignInViewModel::class.java]
+        viewModel.start()
+
+        store.clear()
+
+        assertThat(signIn.cancelled).containsExactly(pending)
     }
 
     @Test
@@ -146,6 +173,8 @@ class TutaSignInViewModelTest {
 
         assertThat(viewModel.state.value.step).isEqualTo(Step.PASSWORD)
         assertThat(viewModel.state.value.error).isEqualTo(TutaSignInError.RATE_LIMITED)
+        // Tuta ended that sign-in itself; there is nothing to cancel.
+        assertThat(signIn.cancelled).isEmpty()
     }
 
     @Test
@@ -233,6 +262,7 @@ class TutaSignInViewModelTest {
     private class FakeSignIn : TutaSignIn {
         val results = ArrayDeque<TutaSignInResult>()
         val calls = mutableListOf<Call>()
+        val cancelled = mutableListOf<PendingSignIn>()
 
         override suspend fun signIn(
             email: String,
@@ -242,6 +272,10 @@ class TutaSignInViewModelTest {
         ): TutaSignInResult {
             calls += Call(email, password, totp, pending)
             return results.removeFirst()
+        }
+
+        override fun cancel(pending: PendingSignIn) {
+            cancelled += pending
         }
     }
 

@@ -65,9 +65,10 @@ custom domains whose MX record names `mail.tutanota.de`.
 
 - **Setup** (`TutaSignInViewModel`): signs in with the password from the setup's password step; if the account
   has two-factor sign-in, asks for the TOTP code and sends it on the sign-in Tuta keeps open. That pending
-  sign-in lives in memory only and is dropped when the password changes, when the user steps back, and
-  whenever Tuta says the sign-in must start over. `rate_limited`, `pending_session_expired`, a refused code,
-  security keys (unsupported) and network failures each get their own message.
+  sign-in lives in memory only. When the password changes, the user steps back or leaves the screen, it is
+  cancelled on Tuta's side (`cancel_sign_in`, in the background); when Tuta says the sign-in must start over, it
+  is dropped. `rate_limited`, `pending_session_expired`, a refused code, security keys (unsupported) and network
+  failures each get their own message.
 - **Folders** mirror Tuta's tree; a folder's server id is its Tuta id, its name its path. `TutaBackend` is
   its own `RemoteFolderCreator`, so the app's folder creation (today, "create an archive folder") creates a
   Tuta folder at the path it names, under an existing parent.
