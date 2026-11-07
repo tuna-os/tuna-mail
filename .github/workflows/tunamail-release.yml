@@ -12,8 +12,9 @@ name: Tuna Mail - Release
 # The key comes from two Actions secrets: TUNAMAIL_KEYSTORE_BASE64 (the PKCS12 keystore,
 # base64) and TUNAMAIL_KEYSTORE_PASSWORD (its store and key password); the alias is tunamail.
 # The keystore is written under $RUNNER_TEMP for the build and deleted afterwards, and the
-# passwords reach Gradle through the environment, never the command line. A build signed with
-# any other certificate than RELEASE_CERT_SHA256 below fails before anything is published.
+# passwords go into ~/.gradle/gradle.properties for the build and are removed afterwards, never
+# on the command line. A build signed with any other certificate than RELEASE_CERT_SHA256 below
+# fails before anything is published.
 #
 # The OAuth client ids (docs/tunamail/oauth.md) are optional: set TUNAMAIL_GOOGLE_CLIENT_ID and
 # TUNAMAIL_MICROSOFT_CLIENT_ID as Actions variables or secrets to build them in.
@@ -143,10 +144,12 @@ jobs:
               exit 1
             fi
             certs=$("$build_tools/apksigner" verify --print-certs "$apk")
-            signers=$(grep -c '^Signer #[0-9]* certificate DN:' <<< "$certs" || true)
-            actual=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' <<< "$certs")
-            if [ "$signers" != 1 ] || [ "$actual" != "$expected" ]; then
-              echo "::error::$apk is not signed with the Tuna Mail release key (got $signers signer(s), SHA-256 ${actual:-none})."
+            # v2 prints "Signer #1 certificate …", v3/v3.1 "Signer (minSdkVersion=…) certificate …".
+            signers=$(grep -c '^Signer .* certificate DN:' <<< "$certs" || true)
+            digests=$(sed -n 's/^Signer .* certificate SHA-256 digest: //p' <<< "$certs" | sort -u)
+            if [ "$signers" -lt 1 ] || [ "$digests" != "$expected" ]; then
+              echo "$certs" >&2
+              echo "::error::$apk is not signed with the Tuna Mail release key (got $signers signer line(s), SHA-256 ${digests:-none})."
               exit 1
             fi
             # Each APK carries the native libraries of its own ABI only.
