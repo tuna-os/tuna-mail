@@ -9,6 +9,9 @@ proprietary protocols rather than IMAP. Gmail and Microsoft 365 work through ups
 OAuth support with Tuna Mail's own OAuth registrations ([oauth.md](oauth.md)). Everything else
 should be the same app as upstream, kept that way by merging upstream continuously.
 
+[`.github/README.md`](../../.github/README.md) is the fork's front page: GitHub shows it in place of
+upstream's `README.md`, which the fork never edits, so it is not a touchpoint.
+
 There are three rules:
 
 1. **Upstream first.** Anything that is not Tuta, Proton, Tuna Mail branding or fork plumbing goes
