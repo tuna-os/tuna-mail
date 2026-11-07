@@ -27,21 +27,10 @@ import net.thunderbird.components.ui.bolt.molecule.input.PasswordInput
 import net.thunderbird.components.ui.bolt.molecule.input.TextInput
 import net.thunderbird.components.ui.bolt.template.ResponsiveWidthContainer
 import net.thunderbird.components.ui.bolt.theme.BoltTheme
-import org.tunaos.mail.feature.proton.HumanVerificationMessage
 import org.tunaos.mail.feature.proton.ProtonSignInError
 import org.tunaos.mail.feature.proton.ProtonSignInState
 import org.tunaos.mail.feature.proton.ProtonSignInStep
 import org.tunaos.mail.feature.proton.R
-
-internal sealed interface ProtonSignInEvent {
-    data class PasswordChanged(val password: String) : ProtonSignInEvent
-    data class TotpChanged(val totp: String) : ProtonSignInEvent
-    data class MailboxPasswordChanged(val mailboxPassword: String) : ProtonSignInEvent
-    data class VerificationMessage(val message: HumanVerificationMessage) : ProtonSignInEvent
-    data object VerificationUnsupported : ProtonSignInEvent
-    data object Submit : ProtonSignInEvent
-    data object Back : ProtonSignInEvent
-}
 
 @Composable
 internal fun ProtonSignInContent(
@@ -152,7 +141,7 @@ private fun VerificationStep(state: ProtonSignInState, onEvent: (ProtonSignInEve
         HumanVerificationView(
             url = url,
             onMessage = { onEvent(ProtonSignInEvent.VerificationMessage(it)) },
-            onUnsupported = { onEvent(ProtonSignInEvent.VerificationUnsupported) },
+            onCannotShow = { onEvent(ProtonSignInEvent.VerificationUnsupported) },
             modifier = Modifier.fillMaxSize(),
         )
     }

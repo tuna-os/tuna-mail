@@ -25,12 +25,12 @@ import org.tunaos.mail.feature.proton.HumanVerificationMessage
 internal fun HumanVerificationView(
     url: String,
     onMessage: (HumanVerificationMessage) -> Unit,
-    onUnsupported: () -> Unit,
+    onCannotShow: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val currentOnMessage = rememberUpdatedState(onMessage)
     if (!isSupported()) {
-        LaunchedEffect(Unit) { onUnsupported() }
+        LaunchedEffect(Unit) { onCannotShow() }
         return
     }
 

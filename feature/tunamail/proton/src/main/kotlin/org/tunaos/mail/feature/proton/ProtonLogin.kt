@@ -1,5 +1,7 @@
 package org.tunaos.mail.feature.proton
 
+import net.thunderbird.legacy.logging.Log
+
 import org.tunaos.proton.HumanVerificationChallenge
 import org.tunaos.proton.HumanVerificationToken
 import org.tunaos.proton.ProtonClient
@@ -53,8 +55,11 @@ class SdkProtonLogin(private val client: ProtonClient) : ProtonLogin {
     } catch (e: ProtonException.HumanVerificationRequired) {
         ProtonLoginOutcome.VerificationRequired(e.challenge)
     } catch (e: ProtonException.Transport) {
+        Log.w(TAG, e, "Proton sign-in could not reach the server")
         ProtonLoginOutcome.Unreachable
     } catch (e: ProtonException) {
         ProtonLoginOutcome.Refused(e.code)
     }
 }
+
+private const val TAG = "SdkProtonLogin"

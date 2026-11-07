@@ -15,6 +15,16 @@ import org.tunaos.mail.feature.proton.ProtonSignInState
 import org.tunaos.mail.feature.proton.ProtonSignInStep
 import org.tunaos.mail.provider.TunaSignInHandoff
 
+internal sealed interface ProtonSignInEvent {
+    data class PasswordChanged(val password: String) : ProtonSignInEvent
+    data class TotpChanged(val totp: String) : ProtonSignInEvent
+    data class MailboxPasswordChanged(val mailboxPassword: String) : ProtonSignInEvent
+    data class VerificationMessage(val message: HumanVerificationMessage) : ProtonSignInEvent
+    data object VerificationUnsupported : ProtonSignInEvent
+    data object Submit : ProtonSignInEvent
+    data object Back : ProtonSignInEvent
+}
+
 internal sealed interface ProtonSignInEffect {
     data object SignedIn : ProtonSignInEffect
     data object Back : ProtonSignInEffect

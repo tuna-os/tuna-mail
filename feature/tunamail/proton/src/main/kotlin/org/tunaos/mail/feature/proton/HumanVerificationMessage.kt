@@ -36,19 +36,21 @@ sealed interface HumanVerificationMessage {
         private val json = Json { ignoreUnknownKeys = true }
 
         fun parse(data: String): HumanVerificationMessage {
-            val root = runCatching { json.parseToJsonElement(data).jsonObject }.getOrNull() ?: return Other
-            return when (root.string("type")) {
-                "HUMAN_VERIFICATION_SUCCESS" -> {
-                    val payload = root["payload"] as? JsonObject ?: return Other
-                    val token = payload.string("token")?.takeIf { it.isNotEmpty() } ?: return Other
-                    val type = payload.string("type")?.takeIf { it.isNotEmpty() } ?: return Other
-                    Solved(HumanVerificationToken(token = token, type = type))
-                }
+            val root = runCatching { json.parseToJsonElement(data).jsonObject }.getOrNull()
+            return when (root?.string("type")) {
+                "HUMAN_VERIFICATION_SUCCESS" -> solved(root?.get("payload") as? JsonObject) ?: Other
                 "CLOSE" -> Closed
                 else -> Other
             }
         }
 
-        private fun JsonObject.string(key: String): String? = (get(key) as? JsonPrimitive)?.takeIf { it.isString }?.content
+        private fun solved(payload: JsonObject?): Solved? {
+            val token = payload?.string("token")?.takeIf { it.isNotEmpty() }
+            val type = payload?.string("type")?.takeIf { it.isNotEmpty() }
+            return if (token != null && type != null) Solved(HumanVerificationToken(token = token, type = type)) else null
+        }
+
+        private fun JsonObject.string(key: String): String? =
+            (get(key) as? JsonPrimitive)?.takeIf { it.isString }?.content
     }
 }

@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>TooManyFunctions:ProtonApi.kt:ProtonApi</ID>
+    <ID>TooManyFunctions:ProtonApi.kt:SdkProtonApi : ProtonApi</ID>
+    <ID>TooManyFunctions:ProtonBackend.kt:ProtonBackend : Backend</ID>
+    <ID>TooManyFunctions:StoredSessionProtonApi.kt:StoredSessionProtonApi : ProtonApi</ID>
+  </CurrentIssues>
+</SmellBaseline>

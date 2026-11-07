@@ -27,7 +27,7 @@ internal object ProtonOutgoingMailMapper {
     fun map(message: Message): ProtonOutgoingMail {
         val from = message.from?.firstOrNull()
             ?: throw MessagingException("Message has no From address", true)
-        val content = Content().also { it.collect(message) }
+        val content = Content().apply { collect(message) }
 
         return ProtonOutgoingMail(
             sender = from.address,
