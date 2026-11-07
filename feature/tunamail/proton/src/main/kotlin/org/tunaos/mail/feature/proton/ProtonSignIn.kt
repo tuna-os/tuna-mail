@@ -25,6 +25,7 @@ enum class ProtonSignInError {
     HUMAN_VERIFICATION_FAILED,
     HUMAN_VERIFICATION_UNAVAILABLE,
     HUMAN_VERIFICATION_CANCELLED,
+    HUMAN_VERIFICATION_UNSUPPORTED,
     CLIENT_OUTDATED,
     UNREACHABLE,
     FAILED,
@@ -73,12 +74,13 @@ class ProtonSignIn(private val login: ProtonLogin) {
     /** The CAPTCHA page reported a solved token: sign in again presenting it. */
     suspend fun onHumanVerified(token: HumanVerificationToken) = attempt(humanVerification = token)
 
-    fun onHumanVerificationCancelled() = mutableState.update {
-        it.copy(
-            step = it.stepBeforeVerification,
-            challenge = null,
-            error = ProtonSignInError.HUMAN_VERIFICATION_CANCELLED,
-        )
+    fun onHumanVerificationCancelled() = leaveVerification(ProtonSignInError.HUMAN_VERIFICATION_CANCELLED)
+
+    /** The device's WebView is too old to show Proton's CAPTCHA page. */
+    fun onHumanVerificationUnsupported() = leaveVerification(ProtonSignInError.HUMAN_VERIFICATION_UNSUPPORTED)
+
+    private fun leaveVerification(error: ProtonSignInError) = mutableState.update {
+        it.copy(step = it.stepBeforeVerification, challenge = null, error = error)
     }
 
     private fun restart(change: (ProtonSignInState) -> ProtonSignInState) = mutableState.update {

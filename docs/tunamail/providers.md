@@ -9,7 +9,7 @@ on top of shared plumbing.
 | Library | Version | Licence | Source |
 |---|---|---|---|
 | `org.tunaos.tuta:tuta-sdk-android` | 0.2.1 | GPL-3.0-or-later | https://github.com/tuna-os/tuta-unofficial-sdk/releases/tag/v0.2.1 |
-| `org.tunaos.proton:proton-sdk-android` | 0.1.0 | GPL-3.0-or-later | https://github.com/tuna-os/proton-unofficial-sdk/releases/tag/v0.1.0 |
+| `org.tunaos.proton:proton-sdk-android` | 0.1.1 | GPL-3.0-or-later | https://github.com/tuna-os/proton-unofficial-sdk/releases/tag/v0.1.1 |
 
 They are not committed. `tools/tunamail/tunamail.settings.gradle.kts` (applied from `settings.gradle.kts`)
 downloads each release's `-maven.zip` on the first build, checks its pinned SHA-256, unzips it into
@@ -69,9 +69,52 @@ An address on a custom domain is not recognized and goes through the generic set
 - **Limits** — no server search; no copy; a revoked session means removing and re-adding the account
   (the account's server settings screens are IMAP's and do not apply).
 
+## Proton
+
+Server type `proton`; addresses at `proton.me`, `protonmail.com`, `protonmail.ch` and `pm.me`. An address on
+a custom domain is not recognized and goes through the generic setup.
+
+- **Setup** (`ProtonSignIn`, driven by `ProtonSignInViewModel`): signs in with the password from the setup's
+  password step, then asks for whatever Proton wants next: the TOTP code, the mailbox password of a
+  two-password account, or a human verification (CAPTCHA). Proton keeps no half-finished sign-in, so every
+  attempt is a complete login with everything entered so far; changing the address or password starts over.
+  A refused password, code or mailbox password, security keys (unsupported), an outdated client and network
+  failures each get their own message.
+- **Human verification** — `HumanVerificationView` opens Proton's verify page
+  (`https://verify.proton.me/?…&embed=true`) in a WebView that cannot navigate away from verify.proton.me.
+  The page's messages reach the app through a web message listener (`WebViewCompat.addWebMessageListener`)
+  that only frames from verify.proton.me can see, fed by a script injected before the page's own
+  (`addDocumentStartJavaScript`). A solved token retries the login with it; a token Proton rejects fetches a
+  fresh challenge; closing the page returns to the form. A WebView without those two features cannot show the
+  page, and the user is told to update Android System WebView.
+- **Folders** — Proton's system folders, user folders and user labels, a server id each Proton's label id, a
+  name its path. A label is a tag: a message can sit in a label folder and in its real folder at once.
+- **Mail** — a message's server id is its Proton id, which survives moves. A folder's first sync lists its
+  newest messages (as many as it shows) and remembers Proton's event id; later syncs replay the event log
+  from there, and "load more" pages further back. Every message is downloaded whole as the decrypted MIME the
+  SDK builds and parsed by the app's MIME parser; one that cannot be decrypted is skipped.
+- **Flags** — read state and Proton's star.
+- **Move, copy and delete** use Proton label ids. Moving into a label applies it and moving out of one removes
+  it; copying works only into labels, since Proton has one real location per message. Deleting deletes for
+  good in Trash and Drafts and moves mail anywhere else to Trash; Trash and Spam can be emptied.
+- **Sending** takes the composed message apart (addresses, subject, HTML body, attachments, Message-ID,
+  In-Reply-To and References) for the SDK's send, with ordinary delivery: end-to-end encrypted to Proton and
+  PGP recipients, TLS to everyone else, as Proton's own apps do. `send_uncertain` is a permanent failure, so
+  a mail that may have gone out is never sent twice. Proton files the Sent copy itself. **Drafts** saved to
+  the Drafts folder become Proton drafts.
+- **Push** — Proton has no push channel for other clients, so `ProtonBackendPusher` polls Proton's event log
+  every 30 seconds and syncs the watched folders a change touches. Network failures retry after a growing
+  delay; a refused session is reported as a sign-in problem.
+- **Limits** — no server search (the SDK has none); creating, renaming and deleting folders is in the SDK but
+  not wired (upstream's `RemoteFolderCreatorResolver` only knows IMAP); a revoked session means removing and
+  re-adding the account.
+
 ## Tests
 
 JVM tests run against fakes: `:backend:tunasession` (encryption, binding to the account),
 `:backend:tuta` (`FakeTutaApi`: sync, MIME, flags, moves, deletes, send, drafts, push),
 `:feature:tunamail:provider` (discovery, setup routing, handoff, cleanup) and `:feature:tunamail:tuta`
-(the sign-in state machine). There are no live tests.
+(the sign-in state machine). `:backend:proton` (`FakeProtonApi`: folders, sync and event replay, MIME,
+flags, moves, labels, deletes, send, drafts, push, session handling) and `:feature:tunamail:proton` (the
+sign-in state machine, the CAPTCHA page's messages, the sign-in screen's view model). There are no live
+tests.

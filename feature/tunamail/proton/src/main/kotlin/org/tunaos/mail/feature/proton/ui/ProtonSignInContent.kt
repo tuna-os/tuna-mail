@@ -162,6 +162,7 @@ internal val ProtonSignInError.messageRes: Int
         ProtonSignInError.HUMAN_VERIFICATION_FAILED -> R.string.proton_sign_in_error_verification_failed
         ProtonSignInError.HUMAN_VERIFICATION_UNAVAILABLE -> R.string.proton_sign_in_error_verification_unavailable
         ProtonSignInError.HUMAN_VERIFICATION_CANCELLED -> R.string.proton_sign_in_error_verification_cancelled
+        ProtonSignInError.HUMAN_VERIFICATION_UNSUPPORTED -> R.string.proton_sign_in_error_verification_unsupported
         ProtonSignInError.CLIENT_OUTDATED -> R.string.proton_sign_in_error_client_outdated
         ProtonSignInError.UNREACHABLE -> R.string.proton_sign_in_error_unreachable
         ProtonSignInError.FAILED -> R.string.proton_sign_in_error_failed

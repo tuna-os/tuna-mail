@@ -19,6 +19,7 @@
     <string name="proton_sign_in_error_verification_failed">The verification was not accepted. Please complete it again.</string>
     <string name="proton_sign_in_error_verification_unavailable">Proton asked for a human verification that cannot be shown here. Try again later.</string>
     <string name="proton_sign_in_error_verification_cancelled">Sign-in needs the human verification. Sign in again to repeat it.</string>
+    <string name="proton_sign_in_error_verification_unsupported">Proton wants a human verification, but this device\'s WebView is too old to show it here. Update Android System WebView from the app store, then sign in again.</string>
     <string name="proton_sign_in_error_client_outdated">Proton no longer accepts this version of the app. Update it and try again.</string>
     <string name="proton_sign_in_error_unreachable">Could not reach Proton. Check your connection and try again.</string>
     <string name="proton_sign_in_error_failed">Proton refused the sign-in. Try again later.</string>

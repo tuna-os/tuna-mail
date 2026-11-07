@@ -20,6 +20,7 @@ import org.tunaos.mail.feature.proton.PROTON_SERVER_TYPE
 import org.tunaos.mail.feature.proton.ProtonLoginOutcome
 import org.tunaos.mail.feature.proton.ProtonLoginRequest
 import org.tunaos.mail.feature.proton.ProtonSignIn
+import org.tunaos.mail.feature.proton.ProtonSignInError
 import org.tunaos.mail.feature.proton.ProtonSignInStep
 import org.tunaos.mail.provider.TunaSignInHandoff
 import org.tunaos.mail.provider.tunaServerSettings
@@ -95,6 +96,21 @@ class ProtonSignInViewModelTest {
         viewModel.onEvent(ProtonSignInEvent.Back)
 
         assertThat(effects).containsExactly(ProtonSignInEffect.Back)
+    }
+
+    @Test
+    fun `a WebView too old for the CAPTCHA says so instead of reporting a cancel`() = runTest {
+        outcomes += ProtonLoginOutcome.VerificationRequired(
+            org.tunaos.proton.HumanVerificationChallenge(token = "t", methods = listOf("captcha")),
+        )
+        val viewModel = ProtonSignInViewModel(signIn, repository, handoff)
+        assertThat(viewModel.state.value.step).isEqualTo(ProtonSignInStep.HUMAN_VERIFICATION)
+
+        viewModel.onEvent(ProtonSignInEvent.VerificationUnsupported)
+
+        assertThat(viewModel.state.value.step).isEqualTo(ProtonSignInStep.PASSWORD)
+        assertThat(viewModel.state.value.error).isEqualTo(ProtonSignInError.HUMAN_VERIFICATION_UNSUPPORTED)
+        assertThat(viewModel.state.value.challenge).isNull()
     }
 
     private companion object {

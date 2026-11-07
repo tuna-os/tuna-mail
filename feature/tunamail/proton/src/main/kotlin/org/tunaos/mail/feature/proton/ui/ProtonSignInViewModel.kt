@@ -58,7 +58,7 @@ internal class ProtonSignInViewModel(
             is ProtonSignInEvent.TotpChanged -> signIn.setTotp(event.totp)
             is ProtonSignInEvent.MailboxPasswordChanged -> signIn.setMailboxPassword(event.mailboxPassword)
             is ProtonSignInEvent.VerificationMessage -> onVerificationMessage(event.message)
-            ProtonSignInEvent.VerificationUnsupported -> signIn.onHumanVerificationCancelled()
+            ProtonSignInEvent.VerificationUnsupported -> signIn.onHumanVerificationUnsupported()
             ProtonSignInEvent.Submit -> submit()
             ProtonSignInEvent.Back -> onBack()
         }
