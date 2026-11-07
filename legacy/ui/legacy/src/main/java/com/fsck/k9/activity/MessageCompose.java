@@ -84,6 +84,7 @@ import com.fsck.k9.activity.compose.AttachmentPresenter.WaitingAction;
 import app.k9mail.core.android.common.camera.CameraCaptureHandler;
 import com.fsck.k9.activity.compose.ComposeCryptoStatus;
 import com.fsck.k9.activity.compose.ComposeCryptoStatus.SendErrorState;
+import com.fsck.k9.activity.compose.ComposeExtensionHost;
 import com.fsck.k9.activity.compose.IdentityAdapter;
 import com.fsck.k9.activity.compose.IdentityAdapter.IdentityContainer;
 import com.fsck.k9.activity.compose.PgpEnabledErrorDialog.OnOpenPgpDisableListener;
@@ -260,6 +261,7 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
         new NotificationDismisserCompat(notificationDismisser);
     private final SentFolderNotFoundConfirmationDialogFragmentFactory sentFolderNotFoundDialogFragmentFactory =
         DI.get(SentFolderNotFoundConfirmationDialogFragmentFactory.class);
+    private final ComposeExtensionHost composeExtensions = new ComposeExtensionHost(this);
 
     private final Set<Integer> activeInAppNotifications = new HashSet<>();
 
@@ -941,6 +943,9 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
         if (sendMessageHasBeenTriggered) {
             return;
         }
+        if (!composeExtensions.beforeSend(account, recipientPresenter, this::performSendAfterChecks)) {
+            return;
+        }
 
         if (account.isUploadSentMessages()
             && !ignoreSentFolderNotAssigned && !account.hasSentFolder()) {
@@ -1276,6 +1281,9 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        if (composeExtensions.onOptionsItemSelected(item, account)) {
+            return true;
+        }
         int id = item.getItemId();
         if (id == android.R.id.home) {
             prepareToFinish(true);
@@ -1337,6 +1345,7 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
         super.onPrepareOptionsMenu(menu);
 
         recipientPresenter.onPrepareOptionsMenu(menu);
+        composeExtensions.onPrepareOptionsMenu(menu, account);
 
         return true;
     }
@@ -1641,6 +1650,7 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
 
         replyToPresenter.initFromDraftMessage(message);
         recipientPresenter.initFromDraftMessage(message);
+        composeExtensions.onDraftOpened(account, message);
 
         // Read In-Reply-To header from draft
         final String[] inReplyTo = message.getHeader("In-Reply-To");
@@ -1862,6 +1872,7 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
     @Override
     public void onMessageBuildSuccess(MimeMessage message, boolean isDraft) {
         dismissEncryptedMessageProgressIndicator();
+        composeExtensions.onMessageBuilt(account, message, isDraft);
         String plaintextSubject =
                 (currentMessageBuilder instanceof PgpMessageBuilder) ? currentMessageBuilder.getSubject() : null;
 
