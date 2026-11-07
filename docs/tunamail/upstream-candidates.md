@@ -9,7 +9,6 @@ merged, not cherry-picked, into our `main`, so the upstream merge resolves clean
 When upstream merges one, delete its section here, remove the files it touched from
 `tools/tunamail/touchpoints.txt` if nothing else of ours remains in them, and delete the fork-side branch.
 
-
 ## feat(composer): let an account type add send options to the composer
 
 - **Branch:** `feat/compose-extension`, from upstream `467787fcc4`.
