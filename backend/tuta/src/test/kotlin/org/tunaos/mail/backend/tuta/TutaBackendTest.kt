@@ -10,6 +10,7 @@ import assertk.assertions.containsOnly
 import assertk.assertions.doesNotContain
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
@@ -21,11 +22,14 @@ import com.fsck.k9.backend.api.SyncConfig.ExpungePolicy
 import com.fsck.k9.backend.api.SyncListener
 import com.fsck.k9.mail.AuthenticationFailedException
 import com.fsck.k9.mail.FolderType
+import com.fsck.k9.mail.folders.FolderServerId
 import com.fsck.k9.mail.internet.BinaryTempFileBody
 import com.fsck.k9.mail.internet.MimeMessage
 import java.io.File
 import kotlinx.coroutines.runBlocking
+import net.thunderbird.backend.api.folder.RemoteFolderCreationOutcome
 import net.thunderbird.components.core.logging.testing.TestLogger
+import net.thunderbird.components.core.outcome.Outcome
 import net.thunderbird.core.common.exception.MessagingException
 import net.thunderbird.core.common.mail.Flag
 import net.thunderbird.legacy.logging.Log
@@ -90,6 +94,42 @@ class TutaBackendTest {
 
         assertThat(storage.folders.keys).containsOnly(INBOX, DRAFTS, TRASH, WORK)
         assertThat(storage.getFolder(WORK).name).isEqualTo("Office")
+    }
+
+    @Test
+    fun `create makes the folder under its parent and mirrors it`() = runBlocking {
+        backend.refreshFolderList()
+
+        val outcome = backend.create(FolderServerId("Work/Clients"), mustCreate = true, FolderType.ARCHIVE)
+
+        assertThat(outcome).isEqualTo(Outcome.success(RemoteFolderCreationOutcome.Success.Created))
+        val created = api.folders.last()
+        assertThat(created.parent).isEqualTo(WORK)
+        assertThat(created.label).isEqualTo("Clients")
+        assertThat(storage.getFolder(created.id).name).isEqualTo("Work/Clients")
+    }
+
+    @Test
+    fun `create reports a folder that is already there`() = runBlocking {
+        val existing = backend.create(FolderServerId("Work"), mustCreate = false)
+        val required = backend.create(FolderServerId("Work"), mustCreate = true)
+
+        assertThat(existing).isEqualTo(Outcome.success(RemoteFolderCreationOutcome.Success.AlreadyExists))
+        assertThat(required).isEqualTo(Outcome.failure(RemoteFolderCreationOutcome.Error.AlreadyExists))
+        assertThat(api.folders.size).isEqualTo(5)
+    }
+
+    @Test
+    fun `create fails without the parent folder or when Tuta refuses`() = runBlocking {
+        val orphan = backend.create(FolderServerId("Nowhere/Clients"), mustCreate = true)
+        api.failures += "folder_failed"
+        val refused = backend.create(FolderServerId("Clients"), mustCreate = true)
+
+        assertThat(orphan).isInstanceOf<Outcome.Failure<RemoteFolderCreationOutcome.Error>>()
+            .prop(Outcome.Failure<RemoteFolderCreationOutcome.Error>::error)
+            .isInstanceOf<RemoteFolderCreationOutcome.Error.FailedToCreateRemoteFolder>()
+        assertThat(refused).isInstanceOf<Outcome.Failure<RemoteFolderCreationOutcome.Error>>()
+        assertThat(api.folders.size).isEqualTo(5)
     }
 
     @Test
@@ -238,17 +278,55 @@ class TutaBackendTest {
     }
 
     @Test
-    fun `setFlag FLAGGED stays local when the account cannot have the label`() {
+    fun `setFlag FLAGGED stays local and tells the user once when the account cannot have the label`() {
         // The labels list, but the account's plan refuses a new one.
         val refusingApi = object : TutaApi by api {
             override suspend fun createLabel(session: TutaSession, name: String, color: String): String =
                 throw TutaException.of("limit_reached")
         }
-        val refusingBackend = TutaBackend(storage, refusingApi, sessions)
+        var noticeCount = 0
+        val refusingBackend = TutaBackend(storage, refusingApi, sessions, notices = TutaNotices { noticeCount++ })
 
         refusingBackend.setFlag(INBOX, listOf("m1"), Flag.FLAGGED, true)
+        refusingBackend.setFlag(INBOX, listOf("m2"), Flag.FLAGGED, true)
 
         assertThat(api.applyLabelsCalls).isEmpty()
+        assertThat(noticeCount).isEqualTo(1)
+    }
+
+    @Test
+    fun `a label chosen for flags is used instead of Flagged, from the next flag change on`() {
+        val refusingApi = object : TutaApi by api {
+            override suspend fun createLabel(session: TutaSession, name: String, color: String): String =
+                throw TutaException.of("limit_reached")
+        }
+        val refusingBackend = TutaBackend(storage, refusingApi, sessions)
+        api.labels += Label("label-work", "Work", "#000000")
+        refusingBackend.setFlag(INBOX, listOf("m1"), Flag.FLAGGED, true)
+        val choice = TutaFlagLabelChoice(storage, api, sessions)
+
+        val labels = runBlocking { choice.labels() }
+        choice.choose("label-work")
+        refusingBackend.setFlag(INBOX, listOf("m2"), Flag.FLAGGED, true)
+
+        assertThat(labels.map { it.id }).containsExactly("label-work")
+        assertThat(choice.chosen()).isEqualTo("label-work")
+        assertThat(api.applyLabelsCalls).containsExactly(
+            Triple(listOf("m2"), listOf("label-work"), emptyList<String>()),
+        )
+    }
+
+    @Test
+    fun `sync reads flags from the label chosen for flags`() {
+        backend.refreshFolderList()
+        api.labels += Label("label-work", "Work", "#000000")
+        TutaFlagLabelChoice(storage, api, sessions).choose("label-work")
+        api.mails[INBOX] = mutableListOf(listed(mail("m1", isUnread = false), labels = listOf("label-work")))
+        api.messages["m1"] = message(mail("m1", isUnread = false))
+
+        backend.sync(INBOX, syncConfig(), listener)
+
+        assertThat(storage.getFolder(INBOX).getMessageFlags("m1")).contains(Flag.FLAGGED)
     }
 
     @Test
@@ -257,6 +335,57 @@ class TutaBackendTest {
 
         assertThat(api.markReadCalls).isEmpty()
         assertThat(api.applyLabelsCalls).isEmpty()
+    }
+
+    @Test
+    fun `copy is not offered, and refused if asked for anyway`() {
+        assertThat(backend.supportsCopy).isFalse()
+        assertFailure { backend.copyMessages(INBOX, WORK, listOf("m1")) }.isInstanceOf<MessagingException>()
+        assertThat(api.moveCalls).isEmpty()
+    }
+
+    @Test
+    fun `search follows Tuta's scan through the folder and returns the matches newest first`() {
+        api.mails[INBOX] = MutableList(1200) { index ->
+            val id = if (index in setOf(0, 700, 1100)) "needle-$index" else "m$index"
+            listed(mail(id))
+        }
+
+        val ids = backend.search(INBOX, " Needle ", null, null, performFullTextSearch = false)
+
+        assertThat(ids).containsExactly("needle-0", "needle-700", "needle-1100")
+        assertThat(api.searchCalls.map { it.second }).containsExactly(null, "500", "1000")
+        assertThat(api.searchCalls.first().first.keyword).isEqualTo("Needle")
+    }
+
+    @Test
+    fun `search narrows unread on the server and checks the flagged label on the results`() {
+        api.labels += Label("label-flag", "Flagged", "#f5a623")
+        api.mails[INBOX] = mutableListOf(
+            listed(mail("flagged-unread"), labels = listOf("label-flag")),
+            listed(mail("unread")),
+            listed(mail("flagged-read", isUnread = false), labels = listOf("label-flag")),
+        )
+
+        val ids = backend.search(INBOX, "subject", setOf(Flag.FLAGGED), setOf(Flag.SEEN), false)
+
+        assertThat(ids).containsExactly("flagged-unread")
+        assertThat(api.searchCalls.single().first.isUnread).isEqualTo(true)
+    }
+
+    @Test
+    fun `search with nothing to look for asks nothing`() {
+        assertThat(backend.search(INBOX, " ", null, null, false)).isEmpty()
+        assertThat(api.searchCalls).isEmpty()
+    }
+
+    @Test
+    fun `a refused session fails the search as an authentication failure`() {
+        api.failures += "session_revoked"
+
+        assertFailure { backend.search(INBOX, "subject", null, null, false) }
+            .isInstanceOf<AuthenticationFailedException>()
+        assertThat(sessions.isInvalidated).isTrue()
     }
 
     @Test

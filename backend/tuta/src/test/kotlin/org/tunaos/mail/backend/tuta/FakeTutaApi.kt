@@ -11,6 +11,9 @@ import org.tunaos.tuta.Label
 import org.tunaos.tuta.ListedMail
 import org.tunaos.tuta.Message
 import org.tunaos.tuta.MoveOutcome
+import org.tunaos.tuta.SearchHit
+import org.tunaos.tuta.SearchPage
+import org.tunaos.tuta.SearchQuery
 import org.tunaos.tuta.SendOutcome
 import org.tunaos.tuta.SendRequest
 import org.tunaos.tuta.SyncPage
@@ -37,6 +40,8 @@ class FakeTutaApi(
     val sent = mutableListOf<SendRequest>()
     val drafts = mutableListOf<DraftRequest>()
     val revoked = mutableListOf<TutaSession>()
+    val cancelledSignIns = mutableListOf<TutaPendingSession>()
+    val searchCalls = mutableListOf<Pair<SearchQuery, String?>>()
     val watchEvents = Channel<TutaWatchEvent>(Channel.UNLIMITED)
 
     /** Codes to fail the next calls with, one per call, whatever the operation. */
@@ -67,6 +72,29 @@ class FakeTutaApi(
     override suspend fun message(session: TutaSession, id: String): Message {
         failIfAsked()
         return messages[id] ?: throw TutaException.of("invalid_id")
+    }
+
+    override suspend fun search(
+        session: TutaSession,
+        query: SearchQuery,
+        folder: String,
+        limit: Int,
+        cursor: String?,
+    ): SearchPage {
+        failIfAsked()
+        searchCalls += query to cursor
+        val keyword = query.keyword?.lowercase()
+        val all = mails[folder].orEmpty()
+        val start = cursor?.toInt() ?: 0
+        var end = start
+        val hits = mutableListOf<SearchHit>()
+        while (end < all.size && end - start < SEARCH_SCAN && hits.size < limit) {
+            val mail = all[end++]
+            val isMatch = (keyword == null || keyword in mail.header.subject.lowercase()) &&
+                (query.isUnread == null || mail.header.isUnread == query.isUnread)
+            if (isMatch) hits += SearchHit(mail, folder)
+        }
+        return SearchPage(hits, nextCursor = end.takeIf { it < all.size }?.toString(), scanned = (end - start).toLong())
     }
 
     override suspend fun markRead(session: TutaSession, ids: List<String>, isRead: Boolean): List<IdOutcome> {
@@ -134,8 +162,19 @@ class FakeTutaApi(
         return ids.map { IdOutcome(it) }
     }
 
+    override suspend fun createFolder(session: TutaSession, name: String, parent: String?): String {
+        failIfAsked()
+        val id = "folder-${folders.size + 1}"
+        folders = folders + Folder(id = id, role = FolderRole.OTHER, label = name, parent = parent)
+        return id
+    }
+
     override suspend fun revoke(session: TutaSession) {
         revoked += session
+    }
+
+    override suspend fun cancelSignIn(pending: TutaPendingSession) {
+        cancelledSignIns += pending
     }
 
     override fun watch(session: TutaSession): Flow<TutaWatchEvent> = watchEvents.consumeAsFlow()
@@ -144,6 +183,9 @@ class FakeTutaApi(
         failures.removeFirstOrNull()?.let { throw TutaException.of(it) }
     }
 }
+
+/** How many mails one fake search call looks at, like the SDK's bounded scan. */
+const val SEARCH_SCAN = 500
 
 /** A session object as Tuta's sign-in returns it. */
 const val SESSION_JSON =

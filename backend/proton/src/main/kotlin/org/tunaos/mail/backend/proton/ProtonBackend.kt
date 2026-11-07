@@ -7,8 +7,15 @@ import com.fsck.k9.backend.api.BackendStorage
 import com.fsck.k9.backend.api.SyncConfig
 import com.fsck.k9.backend.api.SyncListener
 import com.fsck.k9.mail.BodyFactory
+import com.fsck.k9.mail.FolderType
 import com.fsck.k9.mail.Message
 import com.fsck.k9.mail.Part
+import com.fsck.k9.mail.folders.FolderServerId
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import net.thunderbird.backend.api.folder.RemoteFolderCreationOutcome
+import net.thunderbird.backend.api.folder.RemoteFolderCreator
+import net.thunderbird.components.core.outcome.Outcome
 import net.thunderbird.core.common.exception.MessagingException
 import net.thunderbird.core.common.mail.Flag
 import net.thunderbird.feature.mail.folder.api.FolderPathDelimiter
@@ -29,13 +36,18 @@ private const val TAG = "ProtonBackend"
  * Proton files the Sent copy of a sent message itself, so nothing is uploaded there: an append
  * to Sent returns no id, and the next sync of Sent brings the server's copy. Drafts are saved to
  * Proton's Drafts, encrypted.
+ *
+ * It creates its own folders ([RemoteFolderCreator]), always as user folders.
  */
+@Suppress("TooManyFunctions")
 class ProtonBackend(
     private val backendStorage: BackendStorage,
     private val api: ProtonApi,
-) : Backend {
+    private val pollConditions: ProtonPollConditions = ProtonPollConditions.AlwaysActive,
+) : Backend, RemoteFolderCreator {
     private val folderList = ProtonFolderList(backendStorage, api)
     private val messageSync = ProtonMessageSync(backendStorage, api)
+    private val serverSearch = ProtonSearch(api)
 
     override val supportsFlags = true
     override val supportsExpunge = false
@@ -51,6 +63,13 @@ class ProtonBackend(
         folderList.refresh()
         return FOLDER_PATH_DELIMITER
     }
+
+    override suspend fun create(
+        folderServerId: FolderServerId,
+        mustCreate: Boolean,
+        folderType: FolderType,
+    ): Outcome<RemoteFolderCreationOutcome.Success, RemoteFolderCreationOutcome.Error> =
+        withContext(Dispatchers.IO) { folderList.create(folderServerId.serverId, mustCreate) }
 
     override fun sync(folderServerId: String, syncConfig: SyncConfig, listener: SyncListener) {
         messageSync.sync(folderServerId, syncConfig, listener)
@@ -156,9 +175,7 @@ class ProtonBackend(
         requiredFlags: Set<Flag>?,
         forbiddenFlags: Set<Flag>?,
         performFullTextSearch: Boolean,
-    ): List<String> {
-        throw MessagingException("Server search is not available for Proton accounts", true)
-    }
+    ): List<String> = serverSearch.search(folderServerId, query, requiredFlags, forbiddenFlags)
 
     override fun fetchPart(folderServerId: String, messageServerId: String, part: Part, bodyFactory: BodyFactory) {
         throw UnsupportedOperationException("Proton messages are always downloaded complete")
@@ -184,7 +201,7 @@ class ProtonBackend(
     }
 
     override fun createPusher(callback: BackendPusherCallback): BackendPusher =
-        ProtonBackendPusher(api, backendStorage, callback)
+        ProtonBackendPusher(api, backendStorage, callback, ProtonPollSchedule(pollConditions))
 
     private fun markRead(messageServerIds: List<String>, isRead: Boolean) =
         batch(messageServerIds, "mark_read") { api.markRead(it, isRead) }

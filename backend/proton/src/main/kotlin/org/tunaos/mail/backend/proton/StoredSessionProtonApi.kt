@@ -1,23 +1,22 @@
 package org.tunaos.mail.backend.proton
 
 import com.fsck.k9.mail.AuthenticationFailedException
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flow
 import org.tunaos.proton.ProtonClient
 import org.tunaos.proton.ProtonDraft
 import org.tunaos.proton.ProtonDraftResult
 import org.tunaos.proton.ProtonEmptyResult
 import org.tunaos.proton.ProtonEvents
 import org.tunaos.proton.ProtonException
+import org.tunaos.proton.ProtonFolder
 import org.tunaos.proton.ProtonMessage
 import org.tunaos.proton.ProtonOutcome
 import org.tunaos.proton.ProtonOutgoingMail
+import org.tunaos.proton.ProtonSearchQuery
+import org.tunaos.proton.ProtonSearchResult
 import org.tunaos.proton.ProtonSendResult
 import org.tunaos.proton.ProtonSession
 import org.tunaos.proton.ProtonSessionStore
 import org.tunaos.proton.ProtonSyncResult
-import org.tunaos.proton.ProtonWatchEvent
 
 /**
  * The [ProtonApi] of one account, opened from its stored session on first use rather than when
@@ -89,13 +88,9 @@ class StoredSessionProtonApi(
     override suspend fun saveDraft(draft: ProtonDraft, replaces: String?): ProtonDraftResult =
         call { it.saveDraft(draft, replaces) }
 
-    override fun watch(since: String): Flow<ProtonWatchEvent> = flow {
-        val api = api()
-        try {
-            emitAll(api.watch(since))
-        } catch (e: ProtonException.Session) {
-            forget(api)
-            throw e
-        }
-    }
+    override suspend fun createFolder(name: String, parent: String?): ProtonFolder =
+        call { it.createFolder(name, parent) }
+
+    override suspend fun search(query: ProtonSearchQuery, limit: Int, cursor: String?): ProtonSearchResult =
+        call { it.search(query, limit, cursor) }
 }

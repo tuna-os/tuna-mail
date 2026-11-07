@@ -1,5 +1,6 @@
 package org.tunaos.mail.feature.tuta
 
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
@@ -21,6 +22,7 @@ val featureTunaMailTutaModule = module {
                 backendStorageFactory = get(),
                 api = get(),
                 sessions = get(),
+                flagLabelNotifier = TutaFlagLabelNotifier(androidContext(), get()),
             ),
             api = get(),
         )

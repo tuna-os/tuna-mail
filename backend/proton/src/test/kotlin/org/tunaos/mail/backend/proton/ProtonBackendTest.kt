@@ -21,12 +21,16 @@ import com.fsck.k9.backend.api.SyncConfig
 import com.fsck.k9.backend.api.SyncConfig.ExpungePolicy
 import com.fsck.k9.mail.AuthenticationFailedException
 import com.fsck.k9.mail.FolderType
+import com.fsck.k9.mail.folders.FolderServerId
 import com.fsck.k9.mail.internet.BinaryTempFileBody
 import java.io.File
 import java.util.EnumSet
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlinx.coroutines.test.runTest
+import net.thunderbird.backend.api.folder.RemoteFolderCreationOutcome
 import net.thunderbird.components.core.logging.testing.TestLogger
+import net.thunderbird.components.core.outcome.Outcome
 import net.thunderbird.core.common.exception.MessagingException
 import net.thunderbird.core.common.mail.Flag
 import net.thunderbird.legacy.logging.Log
@@ -96,6 +100,44 @@ class ProtonBackendTest {
         api.folders = FakeProtonApi.SYSTEM_FOLDERS + ProtonFolder(id = "work", label = "Job")
         backend.refreshFolderList()
         assertThat(storage.getFolder("work").name).isEqualTo("Job")
+    }
+
+    @Test
+    fun `create makes a user folder under its parent folder and mirrors it`() = runTest {
+        api.folders = FakeProtonApi.SYSTEM_FOLDERS +
+            ProtonFolder(id = "work", label = "Work", kind = ProtonFolderKind.FOLDER)
+
+        val outcome = backend.create(FolderServerId("Work/Clients"), mustCreate = true, FolderType.ARCHIVE)
+
+        assertThat(outcome).isEqualTo(Outcome.success(RemoteFolderCreationOutcome.Success.Created))
+        val created = api.folders.last()
+        assertThat(created.parent).isEqualTo("work")
+        assertThat(created.kind).isEqualTo(ProtonFolderKind.FOLDER)
+        assertThat(storage.getFolder(created.id).name).isEqualTo("Work/Clients")
+    }
+
+    @Test
+    fun `create reports a folder or label already at the path`() = runTest {
+        api.folders = FakeProtonApi.SYSTEM_FOLDERS + ProtonFolder(id = "red", label = "Urgent")
+
+        val existing = backend.create(FolderServerId("Urgent"), mustCreate = false)
+        val required = backend.create(FolderServerId("Urgent"), mustCreate = true)
+
+        assertThat(existing).isEqualTo(Outcome.success(RemoteFolderCreationOutcome.Success.AlreadyExists))
+        assertThat(required).isEqualTo(Outcome.failure(RemoteFolderCreationOutcome.Error.AlreadyExists))
+    }
+
+    @Test
+    fun `create fails under a label, or when Proton refuses`() = runTest {
+        api.folders = FakeProtonApi.SYSTEM_FOLDERS + ProtonFolder(id = "red", label = "Urgent")
+
+        val underLabel = backend.create(FolderServerId("Urgent/Clients"), mustCreate = true)
+        api.failure = protonError("folder_failed")
+        val refused = backend.create(FolderServerId("Clients"), mustCreate = true)
+
+        assertThat(underLabel).isInstanceOf<Outcome.Failure<RemoteFolderCreationOutcome.Error>>()
+        assertThat(refused).isInstanceOf<Outcome.Failure<RemoteFolderCreationOutcome.Error>>()
+        assertThat(api.folders.size).isEqualTo(FakeProtonApi.SYSTEM_FOLDERS.size + 1)
     }
 
     @Test
@@ -273,6 +315,50 @@ class ProtonBackendTest {
         backend.markAllAsRead(INBOX)
 
         assertThat(api.markReadCalls).containsExactly(listOf("unread") to true)
+    }
+
+    @Test
+    fun `search asks Proton for the keyword in the folder and pages through the results, newest first`() {
+        repeat(150) { api.addMessage("old-$it", INBOX, dateMs = 1_000L + it) }
+        api.messages["new"] = FakeProtonApi.header("new", listOf(INBOX), dateMs = 9_000)
+        api.addMessage("elsewhere", ARCHIVE, dateMs = 10_000)
+
+        val ids = backend.search(INBOX, " subject ", null, null, performFullTextSearch = true)
+
+        assertThat(ids.size).isEqualTo(151)
+        assertThat(ids.first()).isEqualTo("new")
+        assertThat(ids).doesNotContain("elsewhere")
+        assertThat(api.searchCalls.map { it.second }).containsExactly(null, "100")
+        assertThat(api.searchCalls.first().first.keyword).isEqualTo("subject")
+        assertThat(api.searchCalls.first().first.folder).isEqualTo(INBOX)
+    }
+
+    @Test
+    fun `search maps read and flagged requirements to Proton's unread and starred`() {
+        api.addMessage("unread-starred", INBOX, dateMs = 3_000, isUnread = true, isStarred = true)
+        api.addMessage("read-starred", INBOX, dateMs = 2_000, isUnread = false, isStarred = true)
+        api.addMessage("unread", INBOX, dateMs = 1_000, isUnread = true)
+
+        val ids = backend.search(INBOX, "subject", setOf(Flag.FLAGGED), setOf(Flag.SEEN), false)
+
+        assertThat(ids).containsExactly("unread-starred")
+        val query = api.searchCalls.single().first
+        assertThat(query.isUnread).isEqualTo(true)
+        assertThat(query.isStarred).isEqualTo(true)
+    }
+
+    @Test
+    fun `search with nothing to look for asks nothing`() {
+        assertThat(backend.search(INBOX, "  ", null, null, false)).isEmpty()
+        assertThat(api.searchCalls).isEmpty()
+    }
+
+    @Test
+    fun `a refused session fails the search as an authentication failure`() {
+        api.failure = protonError("session_revoked")
+
+        assertFailure { backend.search(INBOX, "subject", null, null, false) }
+            .isInstanceOf<AuthenticationFailedException>()
     }
 
     @Test

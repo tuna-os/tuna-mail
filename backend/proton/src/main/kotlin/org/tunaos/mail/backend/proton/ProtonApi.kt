@@ -1,17 +1,19 @@
 package org.tunaos.mail.backend.proton
 
-import kotlinx.coroutines.flow.Flow
 import org.tunaos.proton.ProtonAccount
 import org.tunaos.proton.ProtonDraft
 import org.tunaos.proton.ProtonDraftResult
 import org.tunaos.proton.ProtonEmptyResult
 import org.tunaos.proton.ProtonEvents
+import org.tunaos.proton.ProtonFolder
+import org.tunaos.proton.ProtonFolderKind
 import org.tunaos.proton.ProtonMessage
 import org.tunaos.proton.ProtonOutcome
 import org.tunaos.proton.ProtonOutgoingMail
+import org.tunaos.proton.ProtonSearchQuery
+import org.tunaos.proton.ProtonSearchResult
 import org.tunaos.proton.ProtonSendResult
 import org.tunaos.proton.ProtonSyncResult
-import org.tunaos.proton.ProtonWatchEvent
 
 /**
  * The part of a signed-in Proton account the backend uses. [SdkProtonApi] is the real one; tests
@@ -45,7 +47,11 @@ interface ProtonApi {
     /** Writes a new draft; [replaces] names the draft it supersedes, which is then deleted. */
     suspend fun saveDraft(draft: ProtonDraft, replaces: String? = null): ProtonDraftResult
 
-    fun watch(since: String): Flow<ProtonWatchEvent>
+    /** Creates a user folder (not a label) under [parent], or at the top level. */
+    suspend fun createFolder(name: String, parent: String?): ProtonFolder
+
+    /** One page of a metadata search; go on with the result's cursor while it has one. */
+    suspend fun search(query: ProtonSearchQuery, limit: Int, cursor: String?): ProtonSearchResult
 
     companion object {
         const val MAX_BATCH = 50
@@ -82,5 +88,9 @@ class SdkProtonApi(private val account: ProtonAccount) : ProtonApi {
     override suspend fun saveDraft(draft: ProtonDraft, replaces: String?): ProtonDraftResult =
         account.saveDraft(draft, replaces)
 
-    override fun watch(since: String): Flow<ProtonWatchEvent> = account.watch(since)
+    override suspend fun createFolder(name: String, parent: String?): ProtonFolder =
+        account.createFolder(name, ProtonFolderKind.FOLDER, parent)
+
+    override suspend fun search(query: ProtonSearchQuery, limit: Int, cursor: String?): ProtonSearchResult =
+        account.search(query, limit, cursor)
 }

@@ -1,7 +1,5 @@
 package org.tunaos.mail.backend.proton
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import org.tunaos.proton.ProtonClient
 import org.tunaos.proton.ProtonDraft
@@ -17,13 +15,14 @@ import org.tunaos.proton.ProtonMailbox
 import org.tunaos.proton.ProtonMessage
 import org.tunaos.proton.ProtonOutcome
 import org.tunaos.proton.ProtonOutgoingMail
+import org.tunaos.proton.ProtonSearchQuery
+import org.tunaos.proton.ProtonSearchResult
 import org.tunaos.proton.ProtonSendResult
 import org.tunaos.proton.ProtonSession
 import org.tunaos.proton.ProtonSessionStore
 import org.tunaos.proton.ProtonSyncChanges
 import org.tunaos.proton.ProtonSyncResult
 import org.tunaos.proton.ProtonTransport
-import org.tunaos.proton.ProtonWatchEvent
 
 /**
  * An in-memory Proton account. Messages live in [messages] and are listed newest first by the
@@ -38,7 +37,10 @@ class FakeProtonApi : ProtonApi {
     /** Failures by message id for mark_read, star and move outcomes. */
     val outcomeCodes = mutableMapOf<String, String>()
     var failure: ProtonException? = null
-    var watchFlow: () -> Flow<ProtonWatchEvent> = { emptyFlow() }
+
+    /** What each events poll answers; by default nothing changed. */
+    var eventsReply: (String) -> ProtonEvents = { since -> protonEvents(since) }
+    val eventCalls = mutableListOf<String>()
 
     val syncCalls = mutableListOf<SyncCall>()
     val markReadCalls = mutableListOf<Pair<List<String>, Boolean>>()
@@ -50,8 +52,8 @@ class FakeProtonApi : ProtonApi {
     val labelCalls = mutableListOf<Triple<List<String>, String, Boolean>>()
     val deleteCalls = mutableListOf<List<String>>()
     val emptyCalls = mutableListOf<String>()
+    val searchCalls = mutableListOf<Pair<ProtonSearchQuery, String?>>()
     var emptyRuns = 1
-    val watchCalls = mutableListOf<String>()
 
     data class SyncCall(val limit: Int, val folder: String, val cursor: String?, val since: String?)
 
@@ -82,7 +84,10 @@ class FakeProtonApi : ProtonApi {
         return result(folder, page, all.size, allIds, nextCursor, eventId, null)
     }
 
-    override suspend fun events(since: String): ProtonEvents = error("not used")
+    override suspend fun events(since: String): ProtonEvents {
+        eventCalls += since
+        return eventsReply(since)
+    }
 
     override suspend fun message(id: String): ProtonMessage {
         messageCalls += id
@@ -131,9 +136,32 @@ class FakeProtonApi : ProtonApi {
         return ProtonDraftResult(id = "draft-${drafts.size}", messageId = "d@proton.me", replaced = false)
     }
 
-    override fun watch(since: String): Flow<ProtonWatchEvent> {
-        watchCalls += since
-        return watchFlow()
+    override suspend fun createFolder(name: String, parent: String?): ProtonFolder {
+        failure?.let { throw it }
+        val folder = ProtonFolder(
+            id = "folder-${folders.size + 1}",
+            label = name,
+            parent = parent.orEmpty(),
+            kind = ProtonFolderKind.FOLDER,
+        )
+        folders = folders + folder
+        return folder
+    }
+
+    override suspend fun search(query: ProtonSearchQuery, limit: Int, cursor: String?): ProtonSearchResult {
+        failure?.let { throw it }
+        searchCalls += query to cursor
+        val keyword = query.keyword?.lowercase()
+        val matches = messages.values
+            .filter { query.folder == null || query.folder in it.labelIds }
+            .filter { keyword == null || keyword in it.subject.lowercase() || keyword in it.sender.address }
+            .filter { query.isUnread == null || it.isUnread == query.isUnread }
+            .filter { query.isStarred == null || it.isStarred == query.isStarred }
+            .sortedByDescending { it.dateMs }
+        val start = cursor?.toInt() ?: 0
+        val end = minOf(start + limit, matches.size)
+        val nextCursor = end.takeIf { it < matches.size }?.toString()
+        return ProtonSearchResult(matches.subList(start, end), nextCursor)
     }
 
     private fun outcomes(ids: List<String>) = ids.map { ProtonOutcome(it, outcomeCodes[it]) }
@@ -201,6 +229,23 @@ class FakeProtonApi : ProtonApi {
                 "Content-Type: text/plain; charset=utf-8\r\n" +
                 "\r\n" +
                 "Body of ${header.id}\r\n"
+
+        /** An events reply with [mailChanged] folders and [updated] ids; nothing else changed. */
+        fun protonEvents(
+            since: String,
+            mailChanged: List<String> = emptyList(),
+            updated: List<String> = emptyList(),
+            refresh: Boolean = false,
+            more: Boolean = false,
+        ) = ProtonEvents(
+            eventId = since,
+            refresh = refresh,
+            more = more,
+            foldersChanged = false,
+            mailChanged = mailChanged,
+            updated = updated,
+            deleted = emptyList(),
+        )
 
         /** A real [ProtonException] for [code], parsed by the SDK from an error reply. */
         fun protonError(code: String): ProtonException = runBlocking {
