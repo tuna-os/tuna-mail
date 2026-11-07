@@ -73,7 +73,6 @@ import com.fsck.k9.ui.helper.RelativeDateTimeFormatter
 import com.fsck.k9.ui.messagelist.MessageListFragmentBridgeContract.MessageListFragmentListener
 import com.fsck.k9.ui.messagelist.MessageListFragmentBridgeContract.MessageListFragmentListener.Companion.MAX_PROGRESS
 import com.fsck.k9.ui.messagelist.debug.AuthDebugActions
-import com.fsck.k9.ui.messagelist.item.MessageViewHolder
 import com.fsck.k9.ui.messageview.LastSelectedFolderStore
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.BaseTransientBottomBar.BaseCallback
@@ -1925,8 +1924,8 @@ class LegacyMessageListFragment :
         get() {
             val recyclerView = recyclerView ?: return null
             val focusedView = recyclerView.focusedChild ?: return null
-            val viewHolder = recyclerView.findContainingViewHolder(focusedView) as? MessageViewHolder ?: return null
-            return adapter.getItemById(viewHolder.uniqueId)
+            val viewHolder = recyclerView.findContainingViewHolder(focusedView) ?: return null
+            return adapter.getItem(viewHolder)
         }
 
     private val selectedMessages: List<MessageReference>
