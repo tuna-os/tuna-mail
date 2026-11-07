@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "releases": [
+    {
+      "version": "0.1.0",
+      "versioncode": 1,
+      "date": "2026-11-07",
+      "resourceName": "changelog_release_0_1_0"
+    }
+  ]
+}

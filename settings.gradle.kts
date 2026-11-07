@@ -87,6 +87,9 @@ include(
     ":app-thunderbird:benchmarks",
 )
 
+// Tuna Mail (tuna-os fork, see docs/tunamail/MAINTAINING.md)
+include(":app-tunamail")
+
 include(":benchmarks")
 
 include(

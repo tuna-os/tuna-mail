@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_webpage_url" translatable="false">https://github.com/tuna-os/thunderbird-android</string>
+    <string name="user_forum_url" translatable="false">https://github.com/tuna-os/thunderbird-android/issues</string>
+    <!-- Tuna Mail has no funding feature; this only satisfies the shared resource. -->
+    <string name="funding_url" translatable="false">https://github.com/tuna-os/thunderbird-android</string>
+    <string name="message_header_mua" translatable="false">Tuna Mail for Android</string>
+    <string name="app_source_url" translatable="false">https://github.com/tuna-os/thunderbird-android</string>
+    <string name="thunderbird_website_domain" translatable="false">www.thunderbird.net</string>
+    <string name="thunderbird_website_url" translatable="false">https://www.thunderbird.net</string>
+</resources>

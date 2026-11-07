@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Converted from the Lifafa icon (tuna-os/hylki fork/icons/org.tunaos.lifafa.svg); drop shadows and gradients flattened. -->
+<vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp"
+    android:height="72dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128"
+    >
+    <path
+        android:fillColor="#3584E4"
+        android:pathData="M32,16h64a10,10 0,0 1,10,10v78a10,10 0,0 1,-10,10h-64a10,10 0,0 1,-10,-10v-78a10,10 0,0 1,10,-10z"
+        />
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.35"
+        android:pathData="M24,17h80a1,1 0,0 1,1,1v0a1,1 0,0 1,-1,1h-80a1,1 0,0 1,-1,-1v-0a1,1 0,0 1,1,-1z"
+        />
+    <path
+        android:fillColor="#D0CFCC"
+        android:pathData="M33,58h62a5,5 0,0 1,5,5v36a5,5 0,0 1,-5,5h-62a5,5 0,0 1,-5,-5v-36a5,5 0,0 1,5,-5z"
+        />
+    <path
+        android:fillColor="#D0CFCC"
+        android:fillAlpha="0.9"
+        android:pathData="M28,63L64,40L100,63Z"
+        />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,26h48a4,4 0,0 1,4,4v50a4,4 0,0 1,-4,4h-48a4,4 0,0 1,-4,-4v-50a4,4 0,0 1,4,-4z"
+        />
+    <path
+        android:fillColor="#1C71D8"
+        android:fillAlpha="0.8"
+        android:pathData="M46,35h22a2,2 0,0 1,2,2v2a2,2 0,0 1,-2,2h-22a2,2 0,0 1,-2,-2v-2a2,2 0,0 1,2,-2z"
+        />
+    <path
+        android:fillColor="#BABDB6"
+        android:pathData="M45,48h38a1,1 0,0 1,1,1v1a1,1 0,0 1,-1,1h-38a1,1 0,0 1,-1,-1v-1a1,1 0,0 1,1,-1z"
+        />
+    <path
+        android:fillColor="#BABDB6"
+        android:pathData="M45,56h32a1,1 0,0 1,1,1v1a1,1 0,0 1,-1,1h-32a1,1 0,0 1,-1,-1v-1a1,1 0,0 1,1,-1z"
+        />
+    <path
+        android:fillColor="#BABDB6"
+        android:pathData="M45,64h38a1,1 0,0 1,1,1v1a1,1 0,0 1,-1,1h-38a1,1 0,0 1,-1,-1v-1a1,1 0,0 1,1,-1z"
+        />
+    <path
+        android:fillColor="#FAFAF9"
+        android:pathData="M28,63L64,88L100,63L100,99Q100,104 95,104L33,104Q28,104 28,99Z"
+        />
+    <path
+        android:pathData="M30,102L56,83M98,102L72,83"
+        android:strokeColor="#DEDDDA"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        />
+    <path
+        android:pathData="M28,63L64,88L100,63"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeAlpha="0.8"
+        />
+    <path
+        android:fillColor="#3584E4"
+        android:pathData="M57,88a7,7 0,1 0,14,0a7,7 0,1 0,-14,0z"
+        />
+    <path
+        android:pathData="M59.5,88a4.5,4.5 0,1 0,9.0,0a4.5,4.5 0,1 0,-9.0,0z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeAlpha="0.6"
+        />
+    <path
+        android:pathData="M59,85A6,6 0,0 1,66,82"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.2"
+        android:strokeAlpha="0.45"
+        />
+</vector>
