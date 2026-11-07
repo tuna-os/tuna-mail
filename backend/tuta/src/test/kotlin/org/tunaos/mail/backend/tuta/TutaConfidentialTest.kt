@@ -33,7 +33,7 @@ class TutaConfidentialTest {
         ),
     )
     private val passwords = TutaRecipientPasswords()
-    private val backend = TutaBackend(InMemoryBackendStorage(), api, FakeSessionSource(), passwords)
+    private val backend = TutaBackend(InMemoryBackendStorage(), api, FakeSessionSource(), passwords = passwords)
 
     @Before
     fun setUp() {
