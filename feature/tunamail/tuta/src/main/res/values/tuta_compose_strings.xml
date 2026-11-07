@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tuta_compose_confidential">Confidential</string>
+    <string name="tuta_compose_confidential_on">Confidential: recipients outside Tuta read this message in Tuta with a password you give them.</string>
+    <string name="tuta_compose_confidential_off">Not confidential: recipients outside Tuta get ordinary email.</string>
+    <string name="tuta_compose_passwords_title">Passwords for recipients outside Tuta</string>
+    <string name="tuta_compose_passwords_explanation">These recipients get a link to read the message in Tuta. Tell each of them their password some other way than email. Tuta keeps the passwords in your contacts for the next message.</string>
+    <string name="tuta_compose_passwords_send">Send</string>
+    <string name="tuta_compose_password_missing">Enter a password for this recipient.</string>
+    <string name="tuta_compose_password_weak_confirm">Tuta calls this password weak. Tap Send again to use it anyway.</string>
+    <string name="tuta_compose_password_strength_weak">Password strength: weak</string>
+    <string name="tuta_compose_password_strength_fair">Password strength: fair</string>
+    <string name="tuta_compose_password_strength_strong">Password strength: strong</string>
+    <string name="tuta_compose_lookup_failed">Could not check which recipients are outside Tuta. Give a password to each recipient not on Tuta.</string>
+</resources>

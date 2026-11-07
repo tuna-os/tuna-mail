@@ -79,10 +79,20 @@ custom domains whose MX record names `mail.tutanota.de`.
 - **Move and delete** use Tuta folder ids. Deleting deletes for good in Trash and Spam, discards drafts, and
   moves mail anywhere else to Trash.
 - **Sending** takes the composed message apart (addresses, subject, HTML body, attachments, In-Reply-To and
-  References) and sends it as an ordinary send: mail to Tuta recipients is end-to-end encrypted by Tuta
-  anyway; password-protected (confidential) delivery to others is not offered. `send_uncertain` is a
-  permanent failure, so a mail that may have gone out is never sent twice. **Drafts** saved to the Drafts
-  folder become Tuta drafts.
+  References) for the SDK's send. `send_uncertain` is a permanent failure, so a mail that may have gone out is
+  never sent twice. **Drafts** saved to the Drafts folder become Tuta drafts.
+- **Confidential mail** — the composer of a Tuta account has a *Confidential* menu toggle (off by default),
+  added through upstream's composer seam (`ComposeExtension`, a touchpoint in `MessageCompose`) by
+  `TutaComposeExtension`. Off, the message goes as an ordinary send: end-to-end encrypted to Tuta recipients by
+  Tuta anyway, ordinary mail to everyone else. On, it goes end-to-end encrypted to everyone: on Send the
+  composer asks the account (`contact_passwords`) which recipients are outside Tuta and asks a password for each
+  of them, prefilled from their Tuta contact, with Tuta's own strength hint (`TutaPasswordStrength`, a port of
+  Tuta's `getPasswordStrength`); a weak password needs a second tap, a missing one holds the send. The choice
+  travels in an `X-Tuta-Confidential: yes|no` header, so drafts (local and Tuta's) keep it; the passwords never
+  do. They go from the composer to the backend in memory only, keyed by Message-ID (`TutaRecipientPasswords`),
+  never into a draft, the Outbox, the instance state or a log. A message still queued after the app restarted
+  reads them from the recipients' Tuta contacts, where Tuta keeps every password a send used; a recipient with
+  none fails the send with `password_required` rather than going unencrypted.
 - **Push** follows Tuta's event bus; a reconnect syncs every watched folder.
 - **Limits** — no server search; no copy.
 
@@ -128,11 +138,11 @@ domains whose MX record names `mail.protonmail.ch` or `mailsec.protonmail.ch`.
 ## Tests
 
 JVM tests run against fakes: `:backend:tunasession` (encryption, binding to the account, replacing a session),
-`:backend:tuta` (`FakeTutaApi`: sync, MIME, flags, moves, deletes, send, drafts, push),
+`:backend:tuta` (`FakeTutaApi`: sync, MIME, flags, moves, deletes, send, confidential send, drafts, push),
 `:feature:tunamail:provider` (discovery by domain and by MX record, setup routing, the account type choice,
 handoff, signing in again, cleanup) and `:feature:tunamail:tuta` (the sign-in state machine, for setup and for
-signing in again). `:backend:proton` (`FakeProtonApi`: folders, sync and event replay, MIME, flags, moves,
-labels, deletes, send, drafts, push, session handling) and `:feature:tunamail:proton` (the sign-in state machine,
-the CAPTCHA page's messages, the sign-in screen's view model). `:legacy:core`'s
-`OwnBackendAccountImportExportTest` covers exporting and importing an account with a backend of its own. There
-are no live tests.
+signing in again, the composer's confidential state, the password strength against Tuta's own scores).
+`:backend:proton` (`FakeProtonApi`: folders, sync and event replay, MIME, flags, moves, labels, deletes, send,
+drafts, push, session handling) and `:feature:tunamail:proton` (the sign-in state machine, the CAPTCHA page's
+messages, the sign-in screen's view model). `:legacy:core`'s `OwnBackendAccountImportExportTest` covers exporting
+and importing an account with a backend of its own. There are no live tests.

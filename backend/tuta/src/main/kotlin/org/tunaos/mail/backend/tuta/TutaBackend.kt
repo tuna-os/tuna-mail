@@ -24,12 +24,13 @@ class TutaBackend(
     backendStorage: BackendStorage,
     api: TutaApi,
     sessions: TutaSessionSource,
+    passwords: TutaRecipientPasswords = TutaRecipientPasswords(),
 ) : Backend {
     private val connection = TutaConnection(api, sessions)
     private val folders = TutaFolders(backendStorage, connection)
     private val labels = TutaLabels(connection)
     private val tutaSync = TutaSync(backendStorage, connection, folders, labels)
-    private val commands = TutaCommands(connection, folders, labels)
+    private val commands = TutaCommands(connection, folders, labels, passwords)
 
     override val supportsFlags = true
     override val supportsExpunge = false
