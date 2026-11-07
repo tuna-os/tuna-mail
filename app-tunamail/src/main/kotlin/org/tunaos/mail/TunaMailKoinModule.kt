@@ -8,6 +8,7 @@ import net.thunderbird.app.common.appCommonModule
 import net.thunderbird.core.common.oauth.OAuthConfigurationFactory
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
+import org.tunaos.mail.accounts.tunaMailProvidersModule
 import org.tunaos.mail.auth.TunaMailOAuthConfigurationFactory
 import org.tunaos.mail.dev.developmentModuleAdditions
 import org.tunaos.mail.feature.featureModule
@@ -24,6 +25,7 @@ val appModule = module {
     includes(widgetModule)
     includes(featureModule)
     includes(providerModule)
+    includes(tunaMailProvidersModule)
 
     single(named("ClientInfoAppName")) { BuildConfig.CLIENT_INFO_APP_NAME }
     single(named("ClientInfoAppVersion")) { BuildConfig.VERSION_NAME }

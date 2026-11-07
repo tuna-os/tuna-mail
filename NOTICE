@@ -1,3 +1,8 @@
 K-9 Mail
 Copyright 2008-2016, K-9 Mail Developers
 Copyright 2005-2016, The Android Open Source Project
+
+Tuna Mail (the app-tunamail build) links the Tuta SDK for Android
+(https://github.com/tuna-os/tuta-unofficial-sdk) and the Proton SDK for Android
+(https://github.com/tuna-os/proton-unofficial-sdk), both GPL-3.0-or-later. A Tuna Mail
+build that includes them is distributed under GPL-3.0-or-later; see docs/tunamail/providers.md.

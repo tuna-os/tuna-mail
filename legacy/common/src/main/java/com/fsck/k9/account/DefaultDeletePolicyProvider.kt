@@ -8,8 +8,9 @@ class DefaultDeletePolicyProvider : DeletePolicyProvider {
         return when (accountType) {
             Protocols.IMAP -> DeletePolicy.ON_DELETE
             Protocols.POP3 -> DeletePolicy.NEVER
-            "demo" -> DeletePolicy.ON_DELETE
-            else -> throw AssertionError("Unhandled case: $accountType")
+            Protocols.SMTP -> throw AssertionError("Unhandled case: $accountType")
+            // Account types with a backend of their own (the demo account among them) delete on the server.
+            else -> DeletePolicy.ON_DELETE
         }
     }
 }

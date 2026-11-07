@@ -3,9 +3,9 @@ package app.k9mail.feature.account.setup.domain.usecase
 import app.k9mail.autodiscovery.api.AuthenticationType
 import app.k9mail.autodiscovery.api.AutoDiscoveryResult
 import app.k9mail.autodiscovery.api.AutoDiscoveryService
+import app.k9mail.autodiscovery.api.DirectServerSettings
 import app.k9mail.autodiscovery.api.ImapServerSettings
 import app.k9mail.autodiscovery.api.SmtpServerSettings
-import app.k9mail.autodiscovery.demo.DemoServerSettings
 import app.k9mail.feature.account.setup.domain.DomainContract
 import net.thunderbird.core.common.mail.toUserEmailAddress
 import net.thunderbird.core.common.oauth.OAuthConfigurationProvider
@@ -20,7 +20,7 @@ internal class GetAutoDiscovery(
         val result = service.discover(email)
 
         return if (result is AutoDiscoveryResult.Settings) {
-            if (result.incomingServerSettings is DemoServerSettings) {
+            if (result.incomingServerSettings is DirectServerSettings) {
                 return result
             } else {
                 validateOAuthSupport(result)

@@ -57,6 +57,8 @@ class DependencyInjectionTest {
                 NotificationManager::class,
                 Resources::class,
                 ConfigId::class,
+                // The native-account classes take every bound TunaMailProvider, collected with getAll().
+                List::class,
             ),
             injections = injectedParameters(
                 definition<AccountRemoverWorker>(WorkerParameters::class),

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tuta_sign_in_title">Sign in to Tuta</string>
+    <string name="tuta_sign_in_progress">Signing in…</string>
+    <string name="tuta_sign_in_totp_explanation">Your account asks for a second factor. Enter the 6-digit code from your authenticator app.</string>
+    <string name="tuta_sign_in_totp_label">Authenticator code</string>
+    <string name="tuta_sign_in_error_password_required">Enter your Tuta password.</string>
+    <string name="tuta_sign_in_error_totp_required">Enter the 6-digit code from your authenticator app.</string>
+    <string name="tuta_sign_in_error_login_failed">Tuta did not accept this address and password.</string>
+    <string name="tuta_sign_in_error_invalid_totp">That code was not accepted. Wait for the next code and try again.</string>
+    <string name="tuta_sign_in_error_rate_limited">Tuta is limiting sign-ins for this account right now. Wait a few minutes, then try again.</string>
+    <string name="tuta_sign_in_error_pending_session_expired">The sign-in took too long and has expired. Enter your password to start again.</string>
+    <string name="tuta_sign_in_error_unsupported_second_factor">This account signs in with a security key. Only authenticator-app (TOTP) codes are supported; add one in Tuta\'s settings to sign in here.</string>
+    <string name="tuta_sign_in_error_network">Could not reach Tuta. Check your connection and try again.</string>
+    <string name="tuta_sign_in_error_client_outdated">Tuta no longer accepts this version of the app. Update it to sign in.</string>
+    <string name="tuta_sign_in_error_unknown">Signing in to Tuta failed. Try again later.</string>
+</resources>
