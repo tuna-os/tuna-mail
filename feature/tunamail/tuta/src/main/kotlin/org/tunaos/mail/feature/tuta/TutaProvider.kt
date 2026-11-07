@@ -12,6 +12,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.tunaos.mail.backend.tuta.TutaApi
 import org.tunaos.mail.backend.tuta.TutaBackend
 import org.tunaos.mail.backend.tuta.TutaNotices
+import org.tunaos.mail.backend.tuta.TutaRecipientPasswords
 import org.tunaos.mail.backend.tuta.TutaSessionSource
 import org.tunaos.mail.provider.TunaAccountSessions
 import org.tunaos.mail.provider.TunaMailProvider
@@ -79,6 +80,7 @@ class TutaBackendFactory(
     private val api: TutaApi,
     private val sessions: TunaAccountSessions,
     private val flagLabelNotifier: TutaFlagLabelNotifier,
+    private val passwords: TutaRecipientPasswords,
 ) : BackendFactory {
     override fun createBackend(accountId: AccountId): Backend {
         val account = accountManager.findById(accountId) ?: error("Account not found: $accountId")
@@ -87,6 +89,7 @@ class TutaBackendFactory(
             api = api,
             sessions = sessions.tutaSessionSource(accountId, account.incomingServerSettings.username),
             notices = TutaNotices { flagLabelNotifier.show(accountId, account.name ?: account.email) },
+            passwords = passwords,
         )
     }
 }

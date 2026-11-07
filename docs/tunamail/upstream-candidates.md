@@ -1,16 +1,57 @@
 # Upstream candidates
 
-Provider-neutral changes the fork carries as touchpoints, drafted here as pull requests to
-thunderbird/thunderbird-android. Nothing here has been sent; see "Sending a change upstream" in
-[MAINTAINING.md](MAINTAINING.md).
+Changes the fork carries that belong in
+[thunderbird/thunderbird-android](https://github.com/thunderbird/thunderbird-android), written up as pull
+requests ready to open. They are drafts: nothing here has been sent upstream yet. Each one lives on its own
+branch cut from `upstream/main` (see "Sending a change upstream" in [MAINTAINING.md](MAINTAINING.md)) and was
+merged, not cherry-picked, into our `main`, so the upstream merge resolves cleanly once upstream takes it.
+
+When upstream merges one, delete its section here, remove the files it touched from
+`tools/tunamail/touchpoints.txt` if nothing else of ours remains in them, and delete the fork-side branch.
+
+
+## feat(composer): let an account type add send options to the composer
+
+- **Branch:** `feat/compose-extension`, from upstream `467787fcc4`.
+- **Fork issue:** tuna-os/thunderbird-android#5 (Tuta's password-protected mail is the fork's use of it).
+- **Related upstream issues:** #8837 (Refactor: Message Composer), which asks for "better and more consistent
+  ways to hook into the sending process"; no issue asks for this seam itself.
+- **Touchpoints:** `MessageCompose.java`. New files: `ComposeExtension.kt` (in
+  `feature/mail/message/composer/api`), `ComposeExtensionHost.kt` and its test.
+
+> **Title:** feat(composer): let an account type add send options to the composer
+>
+> Some servers send mail in ways a MIME message cannot ask for by itself: a server that encrypts per recipient
+> needs to know, at send time, how each recipient is to get the message, and sometimes a secret per recipient
+> that must never be stored with the draft. Today the only way to add such an option to the composer is to edit
+> `MessageCompose`.
+>
+> This adds a small seam:
+>
+> - `ComposeExtension` (in `:feature:mail:message:composer:api`): every extension bound in Koin is asked, for
+>   the account the composer sends from, for its `ComposeOptions`, or null.
+> - `ComposeOptions`: add or update menu items when the menu is prepared, handle their clicks, hold a send until
+>   it may go (`beforeSend`, which calls back once ready), add headers to the built draft or message, and read a
+>   reopened draft's headers back.
+> - `ComposeExtensionHost` (beside `MessageCompose`): resolves the options again whenever the composer switches
+>   account, removes the previous account's menu items, and is a no-op when nothing is bound — so K-9 Mail and
+>   Thunderbird behave exactly as before.
+>
+> `MessageCompose` gains a host field and a call into it in each of `onPrepareOptionsMenu`, `onOptionsItemSelected`,
+> `performSendAfterChecks` (so the attachment-loading and sent-folder continuations go through it too),
+> `onMessageBuildSuccess` and `processDraftMessage`.
+>
+> **Tests:** `ComposeExtensionHostTest` (no extension bound, headers on drafts and sends, accounts without
+> options, a reopened draft's headers, menu items following the account). `:legacy:ui:legacy:testDebugUnitTest`
+> (that class), `detekt` and `spotlessCheck` pass.
+>
+> **Not verified:** on a device with K-9 Mail or Thunderbird, where nothing is bound and every call returns at
+> once.
 
 ## Let a backend create its own folders
 
-**Touchpoints:** `app-common/.../feature/mail/RemoteFolderCreatorResolver.kt`, `FeatureMailModule.kt`.
-
-**Draft PR title:** `feat(backend): let backends implement RemoteFolderCreator themselves`
-
-**Draft PR body:**
+- **Touchpoints:** `app-common/.../feature/mail/RemoteFolderCreatorResolver.kt`, `FeatureMailModule.kt`.
+- **Title:** `feat(backend): let backends implement RemoteFolderCreator themselves`
 
 > `RemoteFolderCreatorResolver` returns a real creator only for IMAP and `NoOpRemoteFolderCreator` for
 > every other server type, so a backend that can create folders (JMAP, or any future backend) has no way

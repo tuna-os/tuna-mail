@@ -33,12 +33,13 @@ class TutaBackend(
     api: TutaApi,
     sessions: TutaSessionSource,
     notices: TutaNotices = TutaNotices {},
+    passwords: TutaRecipientPasswords = TutaRecipientPasswords(),
 ) : Backend, RemoteFolderCreator {
     private val connection = TutaConnection(api, sessions)
     private val folders = TutaFolders(backendStorage, connection)
     private val labels = TutaLabels(backendStorage, connection, notices)
     private val tutaSync = TutaSync(backendStorage, connection, folders, labels)
-    private val commands = TutaCommands(connection, folders, labels)
+    private val commands = TutaCommands(connection, folders, labels, passwords)
 
     override val supportsFlags = true
     override val supportsExpunge = false

@@ -17,5 +17,11 @@ dependencies {
 
     implementation(libs.androidx.activity.compose)
 
+    // Confidential mail in the composer.
+    implementation(projects.feature.mail.message.composer.api)
+    implementation(libs.android.material)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+
     testImplementation(projects.feature.account.common)
 }
