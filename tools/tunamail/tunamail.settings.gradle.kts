@@ -26,16 +26,16 @@ class TunaSdk(val name: String, val url: String, val sha256: String)
 
 val tunaSdks = listOf(
     TunaSdk(
-        name = "tuta-sdk-android-0.2.1",
-        url = "https://github.com/tuna-os/tuta-unofficial-sdk/releases/download/v0.2.1/" +
-            "tuta-sdk-android-0.2.1-maven.zip",
-        sha256 = "b4d12f3fd70fed7f792f2553d85d751828652ca1285f1c34f63c4adc5ab451dc",
+        name = "tuta-sdk-android-0.3.0",
+        url = "https://github.com/tuna-os/tuta-unofficial-sdk/releases/download/v0.3.0/" +
+            "tuta-sdk-android-0.3.0-maven.zip",
+        sha256 = "286d59ee78d9892a805405bd88741b11aeca64a44e90064354312bd6d433710b",
     ),
     TunaSdk(
-        name = "proton-sdk-android-0.1.1",
-        url = "https://github.com/tuna-os/proton-unofficial-sdk/releases/download/v0.1.1/" +
-            "proton-sdk-android-0.1.1-maven.zip",
-        sha256 = "458dd68f355120cf64a5f0a6c33ac69ff757758691bf12cc303fd2d6e548d133",
+        name = "proton-sdk-android-0.1.2",
+        url = "https://github.com/tuna-os/proton-unofficial-sdk/releases/download/v0.1.2/" +
+            "proton-sdk-android-0.1.2-maven.zip",
+        sha256 = "cba8d785170a135438980f098e4aacf96dca7cb2add49c0f05cf40f7878fe5e7",
     ),
 )
 

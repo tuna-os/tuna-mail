@@ -6,6 +6,7 @@ import java.util.List;
 import android.content.Context;
 import com.fsck.k9.mail.Message;
 import com.fsck.k9.mail.Part;
+import net.thunderbird.backend.api.search.SearchStep;
 import net.thunderbird.feature.account.AccountId;
 
 
@@ -38,6 +39,9 @@ public interface MessagingListener {
     void remoteSearchServerQueryComplete(long folderId, int numResults, int maxResults);
     void remoteSearchFinished(long folderId, int numResults, int maxResults, List<String> extraResults);
     void remoteSearchFailed(String folderServerId, String err);
+    /** A step of a search that runs in steps is done; heard before {@link #remoteSearchFinished}. */
+    default void remoteSearchStepFinished(long folderId, SearchStep step) {
+    }
 
     void enableProgressIndicator(boolean enable);
 

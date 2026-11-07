@@ -45,12 +45,14 @@ class MessagingControllerWrapper(
         requiredFlags: Set<Flag>?,
         forbiddenFlags: Set<Flag>?,
         listener: MessagingListener,
+        cursor: String? = null,
     ): Future<*>? = messagingController.searchRemoteMessages(
         accountId,
         folderId,
         query,
         requiredFlags,
         forbiddenFlags,
+        cursor,
         listener,
     )
 

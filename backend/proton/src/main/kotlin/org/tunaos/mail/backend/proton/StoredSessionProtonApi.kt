@@ -11,6 +11,8 @@ import org.tunaos.proton.ProtonFolder
 import org.tunaos.proton.ProtonMessage
 import org.tunaos.proton.ProtonOutcome
 import org.tunaos.proton.ProtonOutgoingMail
+import org.tunaos.proton.ProtonSearchQuery
+import org.tunaos.proton.ProtonSearchResult
 import org.tunaos.proton.ProtonSendResult
 import org.tunaos.proton.ProtonSession
 import org.tunaos.proton.ProtonSessionStore
@@ -88,4 +90,7 @@ class StoredSessionProtonApi(
 
     override suspend fun createFolder(name: String, parent: String?): ProtonFolder =
         call { it.createFolder(name, parent) }
+
+    override suspend fun search(query: ProtonSearchQuery, limit: Int, cursor: String?): ProtonSearchResult =
+        call { it.search(query, limit, cursor) }
 }

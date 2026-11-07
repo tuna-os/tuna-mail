@@ -15,6 +15,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.thunderbird.backend.api.folder.RemoteFolderCreationOutcome
 import net.thunderbird.backend.api.folder.RemoteFolderCreator
+import net.thunderbird.backend.api.search.SearchStep
+import net.thunderbird.backend.api.search.SteppedSearch
 import net.thunderbird.components.core.outcome.Outcome
 import net.thunderbird.core.common.exception.MessagingException
 import net.thunderbird.core.common.mail.Flag
@@ -37,16 +39,18 @@ private const val TAG = "ProtonBackend"
  * to Sent returns no id, and the next sync of Sent brings the server's copy. Drafts are saved to
  * Proton's Drafts, encrypted.
  *
- * It creates its own folders ([RemoteFolderCreator]), always as user folders.
+ * It creates its own folders ([RemoteFolderCreator]), always as user folders. Its server search follows Proton's
+ * metadata search in steps ([SteppedSearch], [ProtonSearch]).
  */
 @Suppress("TooManyFunctions")
 class ProtonBackend(
     private val backendStorage: BackendStorage,
     private val api: ProtonApi,
     private val pollConditions: ProtonPollConditions = ProtonPollConditions.AlwaysActive,
-) : Backend, RemoteFolderCreator {
+) : Backend, RemoteFolderCreator, SteppedSearch {
     private val folderList = ProtonFolderList(backendStorage, api)
     private val messageSync = ProtonMessageSync(backendStorage, api)
+    private val serverSearch = ProtonSearch(api)
 
     override val supportsFlags = true
     override val supportsExpunge = false
@@ -133,7 +137,7 @@ class ProtonBackend(
             throw MessagingException("Proton can only empty Trash and Spam, not $folderServerId", true)
         }
         protonCall {
-            while (api.emptyFolder(folderServerId).more) Unit
+            while (api.emptyFolder(folderServerId).more) { /* drain */ }
         }
     }
 
@@ -168,15 +172,33 @@ class ProtonBackend(
         return messageServerIds.associateWith { it }
     }
 
+    /** The first step of [searchStep]. */
     override fun search(
         folderServerId: String,
         query: String?,
         requiredFlags: Set<Flag>?,
         forbiddenFlags: Set<Flag>?,
         performFullTextSearch: Boolean,
-    ): List<String> {
-        throw MessagingException("Server search is not available for Proton accounts", true)
-    }
+    ): List<String> = searchStep(
+        folderServerId = folderServerId,
+        query = query,
+        requiredFlags = requiredFlags,
+        forbiddenFlags = forbiddenFlags,
+        performFullTextSearch = performFullTextSearch,
+        cursor = null,
+        wanted = 0,
+    ).messageServerIds
+
+    /** One step of Proton's metadata search ([ProtonSearch]); bodies are never searched, full text or not. */
+    override fun searchStep(
+        folderServerId: String,
+        query: String?,
+        requiredFlags: Set<Flag>?,
+        forbiddenFlags: Set<Flag>?,
+        performFullTextSearch: Boolean,
+        cursor: String?,
+        wanted: Int,
+    ): SearchStep = serverSearch.step(folderServerId, query, requiredFlags, forbiddenFlags, cursor, wanted)
 
     override fun fetchPart(folderServerId: String, messageServerId: String, part: Part, bodyFactory: BodyFactory) {
         throw UnsupportedOperationException("Proton messages are always downloaded complete")

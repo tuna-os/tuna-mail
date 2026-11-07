@@ -10,6 +10,8 @@ import org.tunaos.proton.ProtonFolderKind
 import org.tunaos.proton.ProtonMessage
 import org.tunaos.proton.ProtonOutcome
 import org.tunaos.proton.ProtonOutgoingMail
+import org.tunaos.proton.ProtonSearchQuery
+import org.tunaos.proton.ProtonSearchResult
 import org.tunaos.proton.ProtonSendResult
 import org.tunaos.proton.ProtonSyncResult
 
@@ -48,6 +50,9 @@ interface ProtonApi {
     /** Creates a user folder (not a label) under [parent], or at the top level. */
     suspend fun createFolder(name: String, parent: String?): ProtonFolder
 
+    /** One page of a metadata search; go on with the result's cursor while it has one. */
+    suspend fun search(query: ProtonSearchQuery, limit: Int, cursor: String?): ProtonSearchResult
+
     companion object {
         const val MAX_BATCH = 50
     }
@@ -85,4 +90,7 @@ class SdkProtonApi(private val account: ProtonAccount) : ProtonApi {
 
     override suspend fun createFolder(name: String, parent: String?): ProtonFolder =
         account.createFolder(name, ProtonFolderKind.FOLDER, parent)
+
+    override suspend fun search(query: ProtonSearchQuery, limit: Int, cursor: String?): ProtonSearchResult =
+        account.search(query, limit, cursor)
 }

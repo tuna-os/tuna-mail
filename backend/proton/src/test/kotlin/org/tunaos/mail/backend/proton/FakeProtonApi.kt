@@ -15,6 +15,8 @@ import org.tunaos.proton.ProtonMailbox
 import org.tunaos.proton.ProtonMessage
 import org.tunaos.proton.ProtonOutcome
 import org.tunaos.proton.ProtonOutgoingMail
+import org.tunaos.proton.ProtonSearchQuery
+import org.tunaos.proton.ProtonSearchResult
 import org.tunaos.proton.ProtonSendResult
 import org.tunaos.proton.ProtonSession
 import org.tunaos.proton.ProtonSessionStore
@@ -50,6 +52,7 @@ class FakeProtonApi : ProtonApi {
     val labelCalls = mutableListOf<Triple<List<String>, String, Boolean>>()
     val deleteCalls = mutableListOf<List<String>>()
     val emptyCalls = mutableListOf<String>()
+    val searchCalls = mutableListOf<Pair<ProtonSearchQuery, String?>>()
     var emptyRuns = 1
 
     data class SyncCall(val limit: Int, val folder: String, val cursor: String?, val since: String?)
@@ -143,6 +146,22 @@ class FakeProtonApi : ProtonApi {
         )
         folders = folders + folder
         return folder
+    }
+
+    override suspend fun search(query: ProtonSearchQuery, limit: Int, cursor: String?): ProtonSearchResult {
+        failure?.let { throw it }
+        searchCalls += query to cursor
+        val keyword = query.keyword?.lowercase()
+        val matches = messages.values
+            .filter { query.folder == null || query.folder in it.labelIds }
+            .filter { keyword == null || keyword in it.subject.lowercase() || keyword in it.sender.address }
+            .filter { query.isUnread == null || it.isUnread == query.isUnread }
+            .filter { query.isStarred == null || it.isStarred == query.isStarred }
+            .sortedByDescending { it.dateMs }
+        val start = cursor?.toInt() ?: 0
+        val end = minOf(start + limit, matches.size)
+        val nextCursor = end.takeIf { it < matches.size }?.toString()
+        return ProtonSearchResult(matches.subList(start, end), nextCursor)
     }
 
     private fun outcomes(ids: List<String>) = ids.map { ProtonOutcome(it, outcomeCodes[it]) }

@@ -16,6 +16,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import net.thunderbird.backend.api.folder.RemoteFolderCreationOutcome
 import net.thunderbird.backend.api.folder.RemoteFolderCreator
+import net.thunderbird.backend.api.search.SearchStep
+import net.thunderbird.backend.api.search.SteppedSearch
 import net.thunderbird.components.core.outcome.Outcome
 import net.thunderbird.core.common.exception.MessagingException
 import net.thunderbird.core.common.mail.Flag
@@ -25,7 +27,7 @@ import net.thunderbird.feature.mail.folder.api.FolderPathDelimiter
  * A Tuta account, through the Tuta SDK ([TutaApi]): folders are Tuta's folder tree, a message's server id is its
  * Tuta mail id, mail is read decrypted and rebuilt as MIME ([TutaMime]), and sending and drafts go through Tuta's
  * own operations ([TutaOutgoing]). Push follows Tuta's event bus ([TutaPusher]). It creates its own folders
- * ([RemoteFolderCreator]).
+ * ([RemoteFolderCreator]), and its server search is a scan in steps ([SteppedSearch], [TutaSearch]).
  */
 @Suppress("TooManyFunctions")
 class TutaBackend(
@@ -34,12 +36,13 @@ class TutaBackend(
     sessions: TutaSessionSource,
     notices: TutaNotices = TutaNotices {},
     passwords: TutaRecipientPasswords = TutaRecipientPasswords(),
-) : Backend, RemoteFolderCreator {
+) : Backend, RemoteFolderCreator, SteppedSearch {
     private val connection = TutaConnection(api, sessions)
     private val folders = TutaFolders(backendStorage, connection)
     private val labels = TutaLabels(backendStorage, connection, notices)
     private val tutaSync = TutaSync(backendStorage, connection, folders, labels)
     private val commands = TutaCommands(connection, folders, labels, passwords)
+    private val serverSearch = TutaSearch(connection, labels)
 
     override val supportsFlags = true
     override val supportsExpunge = false
@@ -120,14 +123,33 @@ class TutaBackend(
         messageServerIds: List<String>,
     ): Map<String, String>? = throw MessagingException("Tuta cannot copy mail", true)
 
-    /** Tuta's search runs on the device in its own apps; the SDK offers none, so there is no server search. */
+    /** The first step of [searchStep]. */
     override fun search(
         folderServerId: String,
         query: String?,
         requiredFlags: Set<Flag>?,
         forbiddenFlags: Set<Flag>?,
         performFullTextSearch: Boolean,
-    ): List<String> = emptyList()
+    ): List<String> = searchStep(
+        folderServerId = folderServerId,
+        query = query,
+        requiredFlags = requiredFlags,
+        forbiddenFlags = forbiddenFlags,
+        performFullTextSearch = performFullTextSearch,
+        cursor = null,
+        wanted = 0,
+    ).messageServerIds
+
+    /** One step of Tuta's bounded scan ([TutaSearch]); it always looks in the body too, full text or not. */
+    override fun searchStep(
+        folderServerId: String,
+        query: String?,
+        requiredFlags: Set<Flag>?,
+        forbiddenFlags: Set<Flag>?,
+        performFullTextSearch: Boolean,
+        cursor: String?,
+        wanted: Int,
+    ): SearchStep = serverSearch.step(folderServerId, query, requiredFlags, forbiddenFlags, cursor, wanted)
 
     /** Messages are downloaded whole ([downloadCompleteMessage]), so there are no parts to fetch on their own. */
     override fun fetchPart(folderServerId: String, messageServerId: String, part: Part, bodyFactory: BodyFactory) {

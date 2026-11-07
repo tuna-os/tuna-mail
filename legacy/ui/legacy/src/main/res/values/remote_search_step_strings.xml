@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Footer of a server search that runs in steps, when more of the folder is left to search. -->
+    <string name="remote_search_step_search_further">Search further</string>
+    <plurals name="remote_search_step_search_further_counted">
+        <item quantity="one">Searched %d message so far. Search further</item>
+        <item quantity="other">Searched %d messages so far. Search further</item>
+    </plurals>
+    <!-- Footer of a server search that runs in steps, once the whole folder has been searched. -->
+    <string name="remote_search_step_searched_all">Searched the whole folder</string>
+    <plurals name="remote_search_step_searched_all_counted">
+        <item quantity="one">Searched the whole folder (%d message)</item>
+        <item quantity="other">Searched the whole folder (%d messages)</item>
+    </plurals>
+    <!-- Added to the footer when the server searches headers only, whatever the full-text search setting says. -->
+    <string name="remote_search_step_headers_only">This server searches subjects, senders and recipients only, not message text.</string>
+</resources>

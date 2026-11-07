@@ -42,6 +42,8 @@ import net.thunderbird.feature.account.AccountIdFactory;
 import net.thunderbird.feature.mail.message.list.LocalDeleteOperationDecider;
 import net.thunderbird.feature.mail.folder.api.OutboxFolderManager;
 import net.thunderbird.feature.mail.message.list.LocalMessageUidPrefixProvider;
+import net.thunderbird.backend.api.search.SearchStep;
+import net.thunderbird.backend.api.search.SteppedSearch;
 import net.thunderbird.feature.notification.api.NotificationManager;
 import net.thunderbird.feature.notification.testing.fake.FakeInAppOnlyNotification;
 import net.thunderbird.feature.notification.testing.fake.FakeNotificationManager;
@@ -72,6 +74,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 
 @SuppressWarnings("unchecked")
@@ -319,6 +322,26 @@ public class MessagingControllerTest extends K9RobolectricTest {
         controller.searchRemoteMessagesSynchronous(accountId, FOLDER_ID, "query", reqFlags, forbiddenFlags, listener);
 
         verify(listener).remoteSearchFinished(FOLDER_ID, 0, 50, Collections.<String>emptyList());
+    }
+
+    @Test
+    public void searchRemoteMessagesSynchronous_withSteppedSearch_shouldRunOneStepFromTheCursor() throws Exception {
+        setupRemoteSearch();
+        Backend steppedBackend = mock(Backend.class, withSettings().extraInterfaces(SteppedSearch.class));
+        SearchStep step = new SearchStep(remoteMessages, "cursor-2", 500, false);
+        when(((SteppedSearch) steppedBackend).searchStep(FOLDER_NAME, "query", reqFlags, forbiddenFlags, false,
+            "cursor-1", 50)).thenReturn(step);
+        when(backendManager.getBackend(accountId)).thenReturn(steppedBackend);
+
+        controller.searchRemoteMessagesSynchronous(accountId, FOLDER_ID, "query", reqFlags, forbiddenFlags,
+            "cursor-1", listener);
+
+        verify(steppedBackend, never()).search(anyString(), anyString(), nullable(Set.class), nullable(Set.class),
+            ArgumentMatchers.anyBoolean());
+        verify(steppedBackend).downloadMessageStructure(FOLDER_NAME, "newMessageUid2");
+        InOrder inOrder = inOrder(listener);
+        inOrder.verify(listener).remoteSearchStepFinished(FOLDER_ID, step);
+        inOrder.verify(listener).remoteSearchFinished(FOLDER_ID, 0, 50, Collections.<String>emptyList());
     }
 
     @Test

@@ -162,3 +162,20 @@ its own backend rather than with a server password, so the import no longer asks
 **Draft PR text:** Only together with the existing `AccountSetupExtension` seam, which upstream does not have yet:
 `accountTypeRoute` lets an extension show a screen before the manual server settings, so an address the automatic
 configuration does not recognize can still be set up as one of the extension's account types.
+
+## Let a server search run in steps from a cursor
+
+**Touchpoints:** `legacy/message/.../MessagingListener.java`, `legacy/core/.../MessagingController.java`,
+`MessagingControllerWrapper.kt`, `MessagingControllerTest.java`.
+
+**Draft PR title:** `feat(backend): let backends implement SteppedSearch for server search in steps`
+
+**Draft PR body:**
+
+> `Backend.search` returns every match in the folder at once, which holds the message list while a large folder
+> is scanned. Backends that scan the folder on the server and return a cursor to resume from can now implement
+> `SteppedSearch` (`net.thunderbird.backend.api.search`), whose `searchStep` searches part of the folder (up to
+> the account's remote search limit) and returns the cursor to continue from. `MessagingController` runs one
+> step at a time and notifies `MessagingListener.remoteSearchStepFinished`, so the message list can show what
+> was found and let the user search further. Non-stepped backends keep calling `Backend.search` as before.
+

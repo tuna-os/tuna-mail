@@ -130,6 +130,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import net.jcip.annotations.GuardedBy
+import net.thunderbird.backend.api.search.SearchStep
 import net.thunderbird.core.android.account.Expunge
 import net.thunderbird.core.android.account.LegacyAccount
 import net.thunderbird.core.android.account.LegacyAccountManager
@@ -265,6 +266,7 @@ class MessageListFragment :
     private var currentFolder: FolderInfoHolder? = null
     private var remoteSearchFuture: Future<*>? = null
     private var extraSearchResults: List<String>? = null
+    private val remoteSearchSteps = RemoteSearchSteps()
     private var threadTitle: String? = null
     private var allAccounts = false
     private var sortType = LegacySortType.SORT_DATE
@@ -704,8 +706,8 @@ class MessageListFragment :
             val folderId = currentFolder.databaseId
             messagingController.loadMoreMessages(account.id, folderId)
         } else if (isRemoteSearch) {
-            val additionalSearchResults = extraSearchResults ?: return
-            if (additionalSearchResults.isEmpty()) return
+            val additionalSearchResults = extraSearchResults.orEmpty()
+            if (additionalSearchResults.isEmpty()) return searchFurther(account.id, currentFolder.databaseId)
 
             val loadSearchResults: List<String>
 
@@ -716,7 +718,7 @@ class MessageListFragment :
             } else {
                 extraSearchResults = null
                 loadSearchResults = additionalSearchResults
-                updateFooterText(null)
+                updateFooterText(remoteSearchSteps.footerText(resources))
             }
 
             messagingController.loadSearchResults(
@@ -830,6 +832,7 @@ class MessageListFragment :
         val queryString = localSearch.remoteSearchArguments
 
         isRemoteSearch = true
+        remoteSearchSteps.reset()
 
         val account = this.account ?: return
 
@@ -843,6 +846,22 @@ class MessageListFragment :
         )
 
         invalidateMenu()
+    }
+
+    /** Runs the next step of a server search that runs in steps, if it has one and no step is running. */
+    private fun searchFurther(accountId: AccountId, folderId: Long) {
+        val cursor = remoteSearchSteps.nextCursor ?: return
+        if (remoteSearchFuture != null) return
+
+        remoteSearchFuture = messagingController.searchRemoteMessages(
+            accountId = accountId,
+            folderId = folderId,
+            query = localSearch.remoteSearchArguments,
+            requiredFlags = null,
+            forbiddenFlags = null,
+            listener = activityListener,
+            cursor = cursor,
+        )
     }
 
     /**
@@ -1295,6 +1314,8 @@ class MessageListFragment :
 
         val footerText = if (initialMessageListLoad) {
             null
+        } else if (isRemoteSearch && remoteSearchFuture == null && extraSearchResults.isNullOrEmpty()) {
+            remoteSearchSteps.footerText(resources)
         } else if (localSearch.isManualSearch || currentFolder == null || account == null) {
             null
         } else if (currentFolder.loading) {
@@ -1981,8 +2002,12 @@ class MessageListFragment :
             if (extraResults != null && extraResults.isNotEmpty()) {
                 handler.updateFooter(String.format(getString(R.string.load_more_messages_fmt), maxResults))
             } else {
-                handler.updateFooter(null)
+                handler.updateFooter(remoteSearchSteps.footerText(resources))
             }
+        }
+
+        override fun remoteSearchStepFinished(folderId: Long, step: SearchStep) {
+            remoteSearchSteps.onStepFinished(step)
         }
 
         override fun remoteSearchServerQueryComplete(folderId: Long, numResults: Int, maxResults: Int) {

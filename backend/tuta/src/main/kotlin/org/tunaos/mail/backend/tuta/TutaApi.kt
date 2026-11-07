@@ -7,6 +7,8 @@ import org.tunaos.tuta.IdOutcome
 import org.tunaos.tuta.Label
 import org.tunaos.tuta.Message
 import org.tunaos.tuta.MoveOutcome
+import org.tunaos.tuta.SearchPage
+import org.tunaos.tuta.SearchQuery
 import org.tunaos.tuta.SendOutcome
 import org.tunaos.tuta.SendRequest
 import org.tunaos.tuta.SyncPage
@@ -26,6 +28,15 @@ interface TutaApi {
     suspend fun sync(session: TutaSession, folder: String?, limit: Int, offset: Int): SyncPage
 
     suspend fun message(session: TutaSession, id: String): Message
+
+    /** One call of Tuta's bounded search scan of [folder]; go on with the page's cursor while it has one. */
+    suspend fun search(
+        session: TutaSession,
+        query: SearchQuery,
+        folder: String,
+        limit: Int,
+        cursor: String?,
+    ): SearchPage
 
     suspend fun markRead(session: TutaSession, ids: List<String>, isRead: Boolean): List<IdOutcome>
 
@@ -53,6 +64,9 @@ interface TutaApi {
 
     suspend fun revoke(session: TutaSession)
 
+    /** Gives up a sign-in still waiting for its second factor, so Tuta closes the session it opened for it. */
+    suspend fun cancelSignIn(pending: TutaPendingSession)
+
     fun watch(session: TutaSession): Flow<TutaWatchEvent>
 
     /** Per distinct address of up to 100: whether it is outside Tuta, and the password its contact keeps. */
@@ -68,6 +82,14 @@ class SdkTutaApi(private val client: TutaClient) : TutaApi {
         client.sync(session, folder, limit, offset)
 
     override suspend fun message(session: TutaSession, id: String) = client.message(session, id)
+
+    override suspend fun search(
+        session: TutaSession,
+        query: SearchQuery,
+        folder: String,
+        limit: Int,
+        cursor: String?,
+    ) = client.search(session, query, folder, limit, cursor)
 
     override suspend fun markRead(session: TutaSession, ids: List<String>, isRead: Boolean) =
         client.markRead(session, ids, isRead)
@@ -98,6 +120,8 @@ class SdkTutaApi(private val client: TutaClient) : TutaApi {
         client.createFolder(session, name, parent)
 
     override suspend fun revoke(session: TutaSession) = client.revoke(session)
+
+    override suspend fun cancelSignIn(pending: TutaPendingSession) = client.cancelSignIn(pending)
 
     override fun watch(session: TutaSession) = client.watch(session)
 

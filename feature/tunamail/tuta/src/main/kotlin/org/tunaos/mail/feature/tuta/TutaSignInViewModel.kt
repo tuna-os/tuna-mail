@@ -18,9 +18,9 @@ import org.tunaos.tuta.TutaErrorCode
  * The password (carried over from the setup's password step, and editable here), then a TOTP code when the account
  * has two-factor sign-in.
  *
- * The sign-in Tuta keeps open for the code ([PendingSignIn]) is held only here, in memory, and dropped whenever the
- * password changes, the user steps back, or Tuta says the sign-in has to start over. Leaving the screen ends this view
- * model, and with it the pending sign-in.
+ * The sign-in Tuta keeps open for the code ([PendingSignIn]) is held only here, in memory. When the password changes,
+ * the user steps back or leaves the screen (which ends this view model), it is cancelled on Tuta's side
+ * ([TutaSignIn.cancel]); when Tuta says the sign-in has to start over, it is just dropped.
  */
 class TutaSignInViewModel(
     private val signIn: TutaSignIn,
@@ -37,7 +37,7 @@ class TutaSignInViewModel(
         if (email.isEmpty()) return
         if (state.value.email == email && state.value.isStarted) return
 
-        pending = null
+        dropPending()
         mutableState.value = TutaSignInState(
             email = email,
             password = target.password,
@@ -48,7 +48,7 @@ class TutaSignInViewModel(
 
     fun onPasswordChanged(password: String) {
         if (password == state.value.password) return
-        pending = null
+        dropPending()
         mutableState.update { it.copy(password = password, totp = "", step = Step.PASSWORD, error = null) }
     }
 
@@ -80,11 +80,21 @@ class TutaSignInViewModel(
     fun onBack(): Boolean {
         if (state.value.isLoading) return true
         if (state.value.step == Step.SECOND_FACTOR) {
-            pending = null
+            dropPending()
             mutableState.update { it.copy(step = Step.PASSWORD, totp = "", error = null) }
             return true
         }
         return false
+    }
+
+    override fun onCleared() {
+        dropPending()
+    }
+
+    /** Gives up the sign-in waiting for its code, if there is one: the user left it. */
+    private fun dropPending() {
+        pending?.let(signIn::cancel)
+        pending = null
     }
 
     private suspend fun onResult(result: TutaSignInResult) {

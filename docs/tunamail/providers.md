@@ -8,8 +8,8 @@ on top of shared plumbing.
 
 |                Library                 | Version |     Licence      |                                Source                                |
 |----------------------------------------|---------|------------------|----------------------------------------------------------------------|
-| `org.tunaos.tuta:tuta-sdk-android`     | 0.2.1   | GPL-3.0-or-later | https://github.com/tuna-os/tuta-unofficial-sdk/releases/tag/v0.2.1   |
-| `org.tunaos.proton:proton-sdk-android` | 0.1.1   | GPL-3.0-or-later | https://github.com/tuna-os/proton-unofficial-sdk/releases/tag/v0.1.1 |
+| `org.tunaos.tuta:tuta-sdk-android`     | 0.3.0   | GPL-3.0-or-later | https://github.com/tuna-os/tuta-unofficial-sdk/releases/tag/v0.3.0   |
+| `org.tunaos.proton:proton-sdk-android` | 0.1.2   | GPL-3.0-or-later | https://github.com/tuna-os/proton-unofficial-sdk/releases/tag/v0.1.2 |
 
 They are not committed. `tools/tunamail/tunamail.settings.gradle.kts` (applied from `settings.gradle.kts`)
 downloads each release's `-maven.zip` on the first build, checks its pinned SHA-256, unzips it into
@@ -65,9 +65,10 @@ custom domains whose MX record names `mail.tutanota.de`.
 
 - **Setup** (`TutaSignInViewModel`): signs in with the password from the setup's password step; if the account
   has two-factor sign-in, asks for the TOTP code and sends it on the sign-in Tuta keeps open. That pending
-  sign-in lives in memory only and is dropped when the password changes, when the user steps back, and
-  whenever Tuta says the sign-in must start over. `rate_limited`, `pending_session_expired`, a refused code,
-  security keys (unsupported) and network failures each get their own message.
+  sign-in lives in memory only. When the password changes, the user steps back or leaves the screen, it is
+  cancelled on Tuta's side (`cancel_sign_in`, in the background); when Tuta says the sign-in must start over, it
+  is dropped. `rate_limited`, `pending_session_expired`, a refused code, security keys (unsupported) and network
+  failures each get their own message.
 - **Folders** mirror Tuta's tree; a folder's server id is its Tuta id, its name its path. `TutaBackend` is
   its own `RemoteFolderCreator`, so the app's folder creation (today, "create an archive folder") creates a
   Tuta folder at the path it names, under an existing parent.
@@ -103,8 +104,15 @@ custom domains whose MX record names `mail.tutanota.de`.
   and rebuilding the mail with the SDK's import is refused below the Legend and Unlimited plans, which a
   backend's static capability cannot express, and would make a second, separate mail without the
   original's labels that counts twice against the account's storage.
-- **Limits** — no server search (the SDK has none); renaming and deleting folders is in the SDK but the app
-  has no screen for it, for any account type.
+- **Server search** (`TutaSearch`, the SDK's `search`): Tuta keeps no search index on the server, so the SDK
+  scans the folder newest first, at most 500 mails, 50 bodies or 30 s per call, looking for the text in the
+  subject, sender, recipients and body. `TutaBackend` implements `SteppedSearch`: each step makes up to 2 calls
+  (at most 1,000 mails) or stops once it has found the account's remote search limit (default 25), and returns
+  a cursor to resume from. The message list shows what was found, counts messages searched so far in the footer,
+  and lets the user tap to search further. Unread state narrows the scan on the server; the other flags are
+  checked on the results.
+- **Limits** — renaming and deleting folders is in the SDK but the app has no screen for it, for any account
+  type.
 
 ## Proton
 
@@ -149,18 +157,25 @@ domains whose MX record names `mail.protonmail.ch` or `mailsec.protonmail.ch`.
   another watched folder is pushed with the next poll at least 5 minutes (15 with the screen off) after the
   last such push, since each push costs a folder sync; an account without the Inbox watched polls at that
   pace. Network failures retry after a growing delay; a refused session is reported as a sign-in problem.
-- **Limits** — no server search (the SDK has none); renaming and deleting folders is in the SDK but the app
-  has no screen for it, for any account type.
+- **Server search** (`ProtonSearch`, the SDK's `search`) looks in what Proton can read: the subject, sender and
+  recipients. Bodies and attachments are end-to-end encrypted and cannot be searched on the server, full text
+  or not. `ProtonBackend` implements `SteppedSearch`: each step pages up to 3 pages or stops once it has found
+  the account's remote search limit (default 25), and returns a cursor to resume from. Read and starred state
+  narrow the search on the server. The footer notes that message text cannot be searched on the server and
+  lets the user tap to search further.
+- **Limits** — renaming and deleting folders is in the SDK but the app has no screen for it, for any account
+  type.
 
 ## Tests
 
 JVM tests run against fakes: `:backend:tunasession` (encryption, binding to the account, replacing a session),
-`:backend:tuta` (`FakeTutaApi`: folders and folder creation, sync, MIME, flags and the flag label, moves, deletes,
-send, confidential send, drafts, push), `:feature:tunamail:provider` (discovery by domain and by MX record, setup
-routing, the account type choice, handoff, signing in again, cleanup) and `:feature:tunamail:tuta` (the sign-in
-state machine, for setup and for signing in again, the composer's confidential state, the password strength
-against Tuta's own scores). `:backend:proton` (`FakeProtonApi`: folders and folder creation, sync and event
-replay, MIME, flags, moves, labels, deletes, send, drafts, the poll schedule, session handling) and
-`:feature:tunamail:proton` (the sign-in state machine, the CAPTCHA page's messages, the sign-in screen's view
-model). `:legacy:core`'s `OwnBackendAccountImportExportTest` covers exporting and importing an account with a
-backend of its own. There are no live tests.
+`:backend:tuta` (`FakeTutaApi`: folders and folder creation, sync, MIME, flags and the flag label, search in
+steps, moves, deletes, send, confidential send, drafts, push), `:feature:tunamail:provider` (discovery by
+domain and by MX record, setup routing, the account type choice, handoff, signing in again, cleanup) and
+`:feature:tunamail:tuta` (the sign-in state machine, for setup and for signing in again, cancelling pending
+sign-ins, the composer's confidential state, the password strength against Tuta's own scores).
+`:backend:proton` (`FakeProtonApi`: folders and folder creation, sync and event replay, MIME, flags, search in
+steps, moves, labels, deletes, send, drafts, the poll schedule, session handling) and `:feature:tunamail:proton`
+(the sign-in state machine, the CAPTCHA page's messages, the sign-in screen's view model). `:legacy:core`'s
+`OwnBackendAccountImportExportTest` covers exporting and importing an account with a backend of its own, and
+`MessagingControllerTest` covers stepped server search. There are no live tests.
