@@ -1,0 +1,82 @@
+package org.tunaos.mail.backend.proton
+
+import com.fsck.k9.backend.api.BackendStorage
+import com.fsck.k9.backend.api.FolderInfo
+import com.fsck.k9.backend.api.updateFolders
+import com.fsck.k9.mail.FolderType
+import org.tunaos.proton.ProtonFolder
+import org.tunaos.proton.ProtonFolderRole
+
+/** Proton's well-known system label ids. */
+internal object ProtonFolderIds {
+    const val INBOX = "0"
+    const val TRASH = "3"
+    const val SPAM = "4"
+    const val ALL_MAIL = "5"
+    const val ARCHIVE = "6"
+    const val SENT = "7"
+    const val DRAFTS = "8"
+    const val STARRED = "10"
+}
+
+internal const val FOLDER_PATH_DELIMITER = "/"
+
+/**
+ * Mirrors Proton's folder rows into the local folder list: system folders, user folders and user
+ * labels. A label is a tag, so a message can sit in a label folder and in its real folder at
+ * once; Proton keeps the message id either way.
+ */
+internal class ProtonFolderList(
+    private val backendStorage: BackendStorage,
+    private val api: ProtonApi,
+) {
+    fun refresh() {
+        val folders = protonCall { api.sync(limit = 1, folder = ProtonFolderIds.INBOX).folders }
+        apply(folders)
+    }
+
+    fun apply(remoteFolders: List<ProtonFolder>) {
+        val byId = remoteFolders.associateBy { it.id }
+        val remote = remoteFolders.map { folder ->
+            FolderInfo(
+                serverId = folder.id,
+                name = pathOf(folder, byId),
+                type = folder.folderType,
+                folderPathDelimiter = FOLDER_PATH_DELIMITER,
+            )
+        }
+        val localIds = backendStorage.getFolderServerIds().toSet()
+        val (existing, new) = remote.partition { it.serverId in localIds }
+
+        backendStorage.updateFolders {
+            existing.forEach { changeFolder(it.serverId, it.name, it.type) }
+            createFolders(new)
+            deleteFolders((localIds - remote.map { it.serverId }.toSet()).toList())
+        }
+    }
+
+    /** "Parent/Child", following parent ids; a cycle or a missing parent ends the walk. */
+    private fun pathOf(folder: ProtonFolder, byId: Map<String, ProtonFolder>): String {
+        val names = ArrayDeque<String>()
+        val seen = mutableSetOf<String>()
+        var current: ProtonFolder? = folder
+        while (current != null && seen.add(current.id)) {
+            names.addFirst(current.label)
+            current = current.parent.takeIf { it.isNotEmpty() }?.let(byId::get)
+        }
+        return names.joinToString(FOLDER_PATH_DELIMITER)
+    }
+
+    private val ProtonFolder.folderType: FolderType
+        get() = when (role) {
+            ProtonFolderRole.INBOX -> FolderType.INBOX
+            ProtonFolderRole.DRAFTS -> FolderType.DRAFTS
+            ProtonFolderRole.SENT -> FolderType.SENT
+            ProtonFolderRole.ARCHIVE -> FolderType.ARCHIVE
+            ProtonFolderRole.JUNK -> FolderType.SPAM
+            ProtonFolderRole.TRASH -> FolderType.TRASH
+            ProtonFolderRole.STARRED,
+            ProtonFolderRole.OTHER,
+            -> FolderType.REGULAR
+        }
+}
