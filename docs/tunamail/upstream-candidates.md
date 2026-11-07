@@ -12,7 +12,7 @@ When upstream merges one, delete its section here, remove the files it touched f
 ## fix(message-list): show sender names and keyboard actions on Compose rows
 
 - **Branch:** `fix/compose-row-sender-keyboard`, from upstream `467787fcc4`.
-- **Fork issue:** tuna-os/thunderbird-android#11.
+- **Fork issue:** tuna-os/tuna-mail#11.
 - **Related upstream issues:** #10780 (Compose message list UI fixes), #10784 (behaviour parity between the
   Compose and legacy message list).
 - **Touchpoints:** `MessageItemContent.kt`, `MessageListAdapter.kt`, `LegacyMessageListFragment.kt`,
@@ -45,7 +45,7 @@ When upstream merges one, delete its section here, remove the files it touched f
 ## fix(message-list): flag messages by database id in the new list
 
 - **Branch:** `fix/message-list-flag-database-id`, from upstream `467787fcc4`.
-- **Fork issue:** tuna-os/thunderbird-android#12.
+- **Fork issue:** tuna-os/tuna-mail#12.
 - **Related upstream issues:** #10783 (selection mode and favourite toggle through the legacy action mode),
   `TODO(#10775)` in `MessageListFragment.setFlagForSelected` (#10775 is closed, the TODO is not).
 - **Touchpoints:** `MessageListFragment.kt`. New files: `MessageListFlagTargets.kt` and its test.
@@ -85,7 +85,7 @@ When upstream merges one, delete its section here, remove the files it touched f
 ## feat(composer): let an account type add send options to the composer
 
 - **Branch:** `feat/compose-extension`, from upstream `467787fcc4`.
-- **Fork issue:** tuna-os/thunderbird-android#5 (Tuta's password-protected mail is the fork's use of it).
+- **Fork issue:** tuna-os/tuna-mail#5 (Tuta's password-protected mail is the fork's use of it).
 - **Related upstream issues:** #8837 (Refactor: Message Composer), which asks for "better and more consistent
   ways to hook into the sending process"; no issue asks for this seam itself.
 - **Touchpoints:** `MessageCompose.java`. New files: `ComposeExtension.kt` (in

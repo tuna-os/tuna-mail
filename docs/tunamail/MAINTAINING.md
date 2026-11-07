@@ -1,6 +1,6 @@
 # Maintaining the Tuna Mail fork
 
-This repository, tuna-os/thunderbird-android, is a soft fork of
+This repository, tuna-os/tuna-mail, is a soft fork of
 [thunderbird/thunderbird-android](https://github.com/thunderbird/thunderbird-android). It adds a
 third app, **Tuna Mail** (`org.tunaos.mail`, module `:app-tunamail`), the Android mail client of
 TunaOS, next to upstream's K-9 Mail and Thunderbird for Android, built from the same shared code.

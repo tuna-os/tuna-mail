@@ -1,6 +1,6 @@
 name: Tuna Mail - Upstream sync
 
-# The Tuna Mail fork (tuna-os/thunderbird-android) follows thunderbird/thunderbird-android:
+# The Tuna Mail fork (tuna-os/tuna-mail) follows thunderbird/thunderbird-android:
 # once a day, upstream's main is merged into ours with a merge commit, checked, and pushed.
 # Never a rebase or a force push, so the fork's history and every tag on it stay valid.
 #
@@ -32,7 +32,7 @@ jobs:
   sync:
     name: Merge thunderbird/thunderbird-android main
     # Only on the fork; upstream has no use for this workflow.
-    if: github.repository == 'tuna-os/thunderbird-android'
+    if: github.repository == 'tuna-os/tuna-mail'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:

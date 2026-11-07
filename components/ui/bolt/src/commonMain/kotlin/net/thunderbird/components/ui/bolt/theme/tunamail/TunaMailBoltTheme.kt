@@ -16,7 +16,7 @@ import net.thunderbird.components.ui.bolt.theme.default.defaultThemeSpacings
 import net.thunderbird.components.ui.bolt.theme.default.defaultTypography
 
 /**
- * Theme of Tuna Mail, the TunaOS fork of the app (tuna-os/thunderbird-android).
+ * Theme of Tuna Mail, the TunaOS fork of the app (tuna-os/tuna-mail).
  *
  * The colors are a Material 3 fidelity scheme seeded from the Lifafa envelope blue (#1C71D8).
  */
