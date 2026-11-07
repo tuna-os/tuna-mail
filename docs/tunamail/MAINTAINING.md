@@ -151,9 +151,18 @@ the native Tuta and Proton libraries exist for these two ABIs only.
 
 Release builds are minified with R8 (`-Pminify=false` turns it off). The keep rules for the Tuta SDK
 (JNA and its uniffi bindings) and the Proton SDK (gomobile) ship inside their AARs as consumer rules,
-so `app-tunamail/proguard-rules.pro` needs none of its own. They are signed when the
-`tunamail.signing.storeFile`, `tunamail.signing.storePassword`, `tunamail.signing.keyAlias` and
-`tunamail.signing.keyPassword` Gradle properties are set, and unsigned otherwise.
+so `app-tunamail/proguard-rules.pro` needs none of its own; a minified APK keeps every class of
+`com.sun.jna`, `org.tunaos.tuta.ffi`, `go` and `org.tunaos.proton.gomobile`. Release builds are
+signed when the `tunamail.signing.storeFile`, `tunamail.signing.storePassword`,
+`tunamail.signing.keyAlias` and `tunamail.signing.keyPassword` Gradle properties are set, and
+unsigned otherwise. A release build needs more memory than the build host's defaults give; this
+one works:
+
+```bash
+TUNAMAIL_MEMORY=7000m tools/build-env/run.sh ./gradlew \
+    -Dorg.gradle.jvmargs="-Dfile.encoding=UTF-8 -XX:+UseG1GC -Xmx4g -XX:MaxMetaspaceSize=1g -XX:ActiveProcessorCount=3" \
+    :app-tunamail:assembleRelease
+```
 
 ## Releasing
 
