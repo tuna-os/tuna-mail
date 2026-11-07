@@ -68,14 +68,19 @@ custom domains whose MX record names `mail.tutanota.de`.
   sign-in lives in memory only and is dropped when the password changes, when the user steps back, and
   whenever Tuta says the sign-in must start over. `rate_limited`, `pending_session_expired`, a refused code,
   security keys (unsupported) and network failures each get their own message.
-- **Folders** mirror Tuta's tree; a folder's server id is its Tuta id, its name its path.
+- **Folders** mirror Tuta's tree; a folder's server id is its Tuta id, its name its path. `TutaBackend` is
+  its own `RemoteFolderCreator`, so the app's folder creation (today, "create an archive folder") creates a
+  Tuta folder at the path it names, under an existing parent.
 - **Mail** — a message's server id is its Tuta mail id. A sync lists the folder's newest mails (as many as
   it shows), drops what the folder no longer holds and updates read state. A new mail without attachments is
   downloaded whole; one with attachments is stored as an envelope and downloaded when opened. Tuta hands out a
   decrypted mail's parts rather than its MIME source, so it is rebuilt as MIME (HTML body, inline images,
   attachments, threading headers from the original header block) and parsed by the app's MIME parser.
-- **Flags** — read state is Tuta's. Tuta stores no star, so "flagged" is a Tuta label named `Flagged`,
-  created the first time a mail is flagged; if the plan allows no more labels, flags stay on the device.
+- **Flags** — read state is Tuta's. Tuta stores no star, so "flagged" is a Tuta label: the one the user chose
+  for flags, or else `Flagged`, created the first time a mail is flagged. If the plan allows no more labels
+  and none was chosen, flags stay on the device and a notification says so, once per run; tapping it opens
+  `TutaFlagLabelActivity` to pick one of the account's labels for flags (`TutaFlagLabelChoice`, stored as a
+  backend extra). The choice takes effect from the next flag change or sync.
 - **Move and delete** use Tuta folder ids. Deleting deletes for good in Trash and Spam, discards drafts, and
   moves mail anywhere else to Trash.
 - **Sending** takes the composed message apart (addresses, subject, HTML body, attachments, In-Reply-To and
@@ -94,7 +99,12 @@ custom domains whose MX record names `mail.tutanota.de`.
   reads them from the recipients' Tuta contacts, where Tuta keeps every password a send used; a recipient with
   none fails the send with `password_required` rather than going unencrypted.
 - **Push** follows Tuta's event bus; a reconnect syncs every watched folder.
-- **Limits** — no server search; no copy.
+- **Copy** is not offered (`supportsCopy` is false, which hides the action). Tuta has no server-side copy,
+  and rebuilding the mail with the SDK's import is refused below the Legend and Unlimited plans, which a
+  backend's static capability cannot express, and would make a second, separate mail without the
+  original's labels that counts twice against the account's storage.
+- **Limits** — no server search (the SDK has none); renaming and deleting folders is in the SDK but the app
+  has no screen for it, for any account type.
 
 ## Proton
 
@@ -116,6 +126,8 @@ domains whose MX record names `mail.protonmail.ch` or `mailsec.protonmail.ch`.
   page, and the user is told to update Android System WebView.
 - **Folders** — Proton's system folders, user folders and user labels, a server id each Proton's label id, a
   name its path. A label is a tag: a message can sit in a label folder and in its real folder at once.
+  `ProtonBackend` is its own `RemoteFolderCreator` and creates user folders (never labels) at the path the
+  app names.
 - **Mail** — a message's server id is its Proton id, which survives moves. A folder's first sync lists its
   newest messages (as many as it shows) and remembers Proton's event id; later syncs replay the event log
   from there, and "load more" pages further back. Every message is downloaded whole as the decrypted MIME the
@@ -130,19 +142,25 @@ domains whose MX record names `mail.protonmail.ch` or `mailsec.protonmail.ch`.
   a mail that may have gone out is never sent twice. Proton files the Sent copy itself. **Drafts** saved to
   the Drafts folder become Proton drafts.
 - **Push** — Proton has no push channel for other clients, so `ProtonBackendPusher` polls Proton's event log
-  every 30 seconds and syncs the watched folders a change touches. Network failures retry after a growing
-  delay; a refused session is reported as a sign-in problem.
-- **Limits** — no server search (the SDK has none); creating, renaming and deleting folders is in the SDK but
-  not wired (upstream's `RemoteFolderCreatorResolver` only knows IMAP).
+  (`events`) and syncs the watched folders a change touches. `ProtonPollSchedule` sets the pace from
+  `ProtonPollConditions` (`AndroidProtonPollConditions`: screen interactive, active network metered), sampled
+  every 30 seconds: the Inbox is polled every 30 seconds (Proton's own clients' interval, and the fastest it
+  ever polls), every 2 minutes on a metered network and every 5 minutes with the screen off. A change to
+  another watched folder is pushed with the next poll at least 5 minutes (15 with the screen off) after the
+  last such push, since each push costs a folder sync; an account without the Inbox watched polls at that
+  pace. Network failures retry after a growing delay; a refused session is reported as a sign-in problem.
+- **Limits** — no server search (the SDK has none); renaming and deleting folders is in the SDK but the app
+  has no screen for it, for any account type.
 
 ## Tests
 
 JVM tests run against fakes: `:backend:tunasession` (encryption, binding to the account, replacing a session),
-`:backend:tuta` (`FakeTutaApi`: sync, MIME, flags, moves, deletes, send, confidential send, drafts, push),
-`:feature:tunamail:provider` (discovery by domain and by MX record, setup routing, the account type choice,
-handoff, signing in again, cleanup) and `:feature:tunamail:tuta` (the sign-in state machine, for setup and for
-signing in again, the composer's confidential state, the password strength against Tuta's own scores).
-`:backend:proton` (`FakeProtonApi`: folders, sync and event replay, MIME, flags, moves, labels, deletes, send,
-drafts, push, session handling) and `:feature:tunamail:proton` (the sign-in state machine, the CAPTCHA page's
-messages, the sign-in screen's view model). `:legacy:core`'s `OwnBackendAccountImportExportTest` covers exporting
-and importing an account with a backend of its own. There are no live tests.
+`:backend:tuta` (`FakeTutaApi`: folders and folder creation, sync, MIME, flags and the flag label, moves, deletes,
+send, confidential send, drafts, push), `:feature:tunamail:provider` (discovery by domain and by MX record, setup
+routing, the account type choice, handoff, signing in again, cleanup) and `:feature:tunamail:tuta` (the sign-in
+state machine, for setup and for signing in again, the composer's confidential state, the password strength
+against Tuta's own scores). `:backend:proton` (`FakeProtonApi`: folders and folder creation, sync and event
+replay, MIME, flags, moves, labels, deletes, send, drafts, the poll schedule, session handling) and
+`:feature:tunamail:proton` (the sign-in state machine, the CAPTCHA page's messages, the sign-in screen's view
+model). `:legacy:core`'s `OwnBackendAccountImportExportTest` covers exporting and importing an account with a
+backend of its own. There are no live tests.

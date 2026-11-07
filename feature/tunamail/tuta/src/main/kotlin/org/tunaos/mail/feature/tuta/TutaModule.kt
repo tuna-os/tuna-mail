@@ -1,6 +1,7 @@
 package org.tunaos.mail.feature.tuta
 
 import net.thunderbird.feature.mail.message.composer.extension.ComposeExtension
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
@@ -23,6 +24,7 @@ val featureTunaMailTutaModule = module {
                 backendStorageFactory = get(),
                 api = get(),
                 sessions = get(),
+                flagLabelNotifier = TutaFlagLabelNotifier(androidContext(), get()),
                 passwords = get(),
             ),
             api = get(),

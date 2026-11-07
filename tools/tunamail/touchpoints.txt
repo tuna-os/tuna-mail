@@ -35,6 +35,10 @@ legacy/core/src/main/java/com/fsck/k9/preferences/SettingsImporter.kt
 #   before the send, headers on the built message, a draft's headers read back. One-line calls into the host;
 #   Tuta's confidential mail (password-protected delivery to recipients outside Tuta) is the fork's use.
 legacy/ui/legacy/src/main/java/com/fsck/k9/activity/MessageCompose.java
+# - A backend that implements RemoteFolderCreator creates its own folders: the resolver asks the account's backend
+#   for any server type it has no factory for, instead of always giving up.
+app-common/src/main/kotlin/net/thunderbird/app/common/feature/mail/RemoteFolderCreatorResolver.kt
+app-common/src/main/kotlin/net/thunderbird/app/common/feature/mail/FeatureMailModule.kt
 
 # Says that Tuna Mail builds link the GPL-3.0-or-later Tuta and Proton SDKs (appended paragraph).
 NOTICE

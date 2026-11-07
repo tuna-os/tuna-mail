@@ -9,6 +9,7 @@ import net.thunderbird.feature.account.AccountId
 import net.thunderbird.legacy.logging.Log
 import org.tunaos.mail.backend.tuta.TutaApi
 import org.tunaos.mail.backend.tuta.TutaBackend
+import org.tunaos.mail.backend.tuta.TutaNotices
 import org.tunaos.mail.backend.tuta.TutaRecipientPasswords
 import org.tunaos.mail.backend.tuta.TutaSessionSource
 import org.tunaos.mail.provider.TunaAccountSessions
@@ -74,16 +75,24 @@ class TutaBackendFactory(
     private val backendStorageFactory: BackendStorageFactory,
     private val api: TutaApi,
     private val sessions: TunaAccountSessions,
+    private val flagLabelNotifier: TutaFlagLabelNotifier,
     private val passwords: TutaRecipientPasswords,
 ) : BackendFactory {
     override fun createBackend(accountId: AccountId): Backend {
         val account = accountManager.findById(accountId) ?: error("Account not found: $accountId")
-        val email = account.incomingServerSettings.username
-        val sessionSource = object : TutaSessionSource {
-            override fun current(): String? = sessions.sessionFor(accountId, TUTA_SERVER_TYPE, email)
-
-            override fun invalidate() = sessions.forget(accountId)
-        }
-        return TutaBackend(backendStorageFactory.createBackendStorage(accountId), api, sessionSource, passwords)
+        return TutaBackend(
+            backendStorage = backendStorageFactory.createBackendStorage(accountId),
+            api = api,
+            sessions = sessions.tutaSessionSource(accountId, account.incomingServerSettings.username),
+            notices = TutaNotices { flagLabelNotifier.show(accountId, account.name ?: account.email) },
+            passwords = passwords,
+        )
     }
+}
+
+/** The session of the Tuta account [accountId] (signed in as [email]), kept by these [TunaAccountSessions]. */
+internal fun TunaAccountSessions.tutaSessionSource(accountId: AccountId, email: String) = object : TutaSessionSource {
+    override fun current(): String? = sessionFor(accountId, TUTA_SERVER_TYPE, email)
+
+    override fun invalidate() = forget(accountId)
 }

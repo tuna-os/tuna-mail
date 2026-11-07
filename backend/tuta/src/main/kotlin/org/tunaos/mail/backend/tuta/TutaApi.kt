@@ -48,6 +48,9 @@ interface TutaApi {
     suspend fun applyLabels(session: TutaSession, ids: List<String>, add: List<String>, remove: List<String>):
         List<IdOutcome>
 
+    /** Creates a folder under [parent] (a folder id), or at the top level; returns its id. */
+    suspend fun createFolder(session: TutaSession, name: String, parent: String?): String
+
     suspend fun revoke(session: TutaSession)
 
     fun watch(session: TutaSession): Flow<TutaWatchEvent>
@@ -90,6 +93,9 @@ class SdkTutaApi(private val client: TutaClient) : TutaApi {
 
     override suspend fun applyLabels(session: TutaSession, ids: List<String>, add: List<String>, remove: List<String>) =
         client.applyLabels(session, ids, add, remove)
+
+    override suspend fun createFolder(session: TutaSession, name: String, parent: String?) =
+        client.createFolder(session, name, parent)
 
     override suspend fun revoke(session: TutaSession) = client.revoke(session)
 

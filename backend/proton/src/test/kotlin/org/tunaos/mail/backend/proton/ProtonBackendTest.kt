@@ -21,12 +21,16 @@ import com.fsck.k9.backend.api.SyncConfig
 import com.fsck.k9.backend.api.SyncConfig.ExpungePolicy
 import com.fsck.k9.mail.AuthenticationFailedException
 import com.fsck.k9.mail.FolderType
+import com.fsck.k9.mail.folders.FolderServerId
 import com.fsck.k9.mail.internet.BinaryTempFileBody
 import java.io.File
 import java.util.EnumSet
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlinx.coroutines.test.runTest
+import net.thunderbird.backend.api.folder.RemoteFolderCreationOutcome
 import net.thunderbird.components.core.logging.testing.TestLogger
+import net.thunderbird.components.core.outcome.Outcome
 import net.thunderbird.core.common.exception.MessagingException
 import net.thunderbird.core.common.mail.Flag
 import net.thunderbird.legacy.logging.Log
@@ -96,6 +100,44 @@ class ProtonBackendTest {
         api.folders = FakeProtonApi.SYSTEM_FOLDERS + ProtonFolder(id = "work", label = "Job")
         backend.refreshFolderList()
         assertThat(storage.getFolder("work").name).isEqualTo("Job")
+    }
+
+    @Test
+    fun `create makes a user folder under its parent folder and mirrors it`() = runTest {
+        api.folders = FakeProtonApi.SYSTEM_FOLDERS +
+            ProtonFolder(id = "work", label = "Work", kind = ProtonFolderKind.FOLDER)
+
+        val outcome = backend.create(FolderServerId("Work/Clients"), mustCreate = true, FolderType.ARCHIVE)
+
+        assertThat(outcome).isEqualTo(Outcome.success(RemoteFolderCreationOutcome.Success.Created))
+        val created = api.folders.last()
+        assertThat(created.parent).isEqualTo("work")
+        assertThat(created.kind).isEqualTo(ProtonFolderKind.FOLDER)
+        assertThat(storage.getFolder(created.id).name).isEqualTo("Work/Clients")
+    }
+
+    @Test
+    fun `create reports a folder or label already at the path`() = runTest {
+        api.folders = FakeProtonApi.SYSTEM_FOLDERS + ProtonFolder(id = "red", label = "Urgent")
+
+        val existing = backend.create(FolderServerId("Urgent"), mustCreate = false)
+        val required = backend.create(FolderServerId("Urgent"), mustCreate = true)
+
+        assertThat(existing).isEqualTo(Outcome.success(RemoteFolderCreationOutcome.Success.AlreadyExists))
+        assertThat(required).isEqualTo(Outcome.failure(RemoteFolderCreationOutcome.Error.AlreadyExists))
+    }
+
+    @Test
+    fun `create fails under a label, or when Proton refuses`() = runTest {
+        api.folders = FakeProtonApi.SYSTEM_FOLDERS + ProtonFolder(id = "red", label = "Urgent")
+
+        val underLabel = backend.create(FolderServerId("Urgent/Clients"), mustCreate = true)
+        api.failure = protonError("folder_failed")
+        val refused = backend.create(FolderServerId("Clients"), mustCreate = true)
+
+        assertThat(underLabel).isInstanceOf<Outcome.Failure<RemoteFolderCreationOutcome.Error>>()
+        assertThat(refused).isInstanceOf<Outcome.Failure<RemoteFolderCreationOutcome.Error>>()
+        assertThat(api.folders.size).isEqualTo(FakeProtonApi.SYSTEM_FOLDERS.size + 1)
     }
 
     @Test

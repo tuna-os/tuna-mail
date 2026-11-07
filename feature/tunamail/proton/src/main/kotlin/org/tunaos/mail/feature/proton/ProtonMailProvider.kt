@@ -10,6 +10,7 @@ import net.thunderbird.core.android.account.LegacyAccountManager
 import net.thunderbird.feature.account.AccountId
 import net.thunderbird.legacy.logging.Log
 import org.tunaos.mail.backend.proton.ProtonBackend
+import org.tunaos.mail.backend.proton.ProtonPollConditions
 import org.tunaos.mail.backend.proton.StoredSessionProtonApi
 import org.tunaos.mail.feature.proton.ui.ProtonSignInScreen
 import org.tunaos.mail.provider.TunaAccountSessions
@@ -64,6 +65,7 @@ class ProtonBackendFactory(
     private val accountManager: LegacyAccountManager,
     private val sessions: TunaAccountSessions,
     private val client: ProtonClient,
+    private val pollConditions: ProtonPollConditions,
 ) : BackendFactory {
     override fun createBackend(accountId: AccountId): Backend {
         val account = accountManager.findById(accountId) ?: error("Account not found: $accountId")
@@ -73,7 +75,7 @@ class ProtonBackendFactory(
             saveSession = { sessions.save(accountId, it) },
             client = client,
         )
-        return ProtonBackend(backendStorageFactory.createBackendStorage(accountId), api)
+        return ProtonBackend(backendStorageFactory.createBackendStorage(accountId), api, pollConditions)
     }
 }
 
