@@ -44,9 +44,23 @@ class TunaMailFeatureFlagProvider(
     }
 
     companion object {
-        /** Flag key to pinned value. Thundermail is a Thunderbird service; Tuna Mail does not offer it. */
+        /**
+         * Flag key to pinned value. Why each flag is pinned, and what upstream still has to finish before the
+         * flags left off can be turned on, is in docs/tunamail/compose.md.
+         */
         val PINNED_FLAGS: Map<String, Boolean> = mapOf(
+            // Thundermail is a Thunderbird service; Tuna Mail does not offer it.
             GeneratedFeatureFlagKey.THUNDERMAIL_ONBOARDING_ENABLED.key to false,
+            // Compose rows in the message list. Rendering only, so it works for every account type.
+            GeneratedFeatureFlagKey.USE_COMPOSE_FOR_MESSAGE_LIST_ITEMS.key to true,
+            // The reader's namespaced CSS, which upstream already defaults on. Pinned so a remote catalog
+            // can't turn it off.
+            GeneratedFeatureFlagKey.USE_NEW_MESSAGE_READER_CSS_STYLES.key to true,
+            // The MVI message list: swipe and star do nothing, flagging a selection is a no-op, and starring
+            // parses a server UID as a database id, which throws for Tuta and Proton messages.
+            GeneratedFeatureFlagKey.ENABLE_MESSAGE_LIST_NEW_STATE.key to false,
+            // Nothing reads this flag yet; pinned off so a remote catalog can't turn on an unreviewed reader.
+            GeneratedFeatureFlagKey.USE_COMPOSE_FOR_MESSAGE_READER.key to false,
         )
     }
 }

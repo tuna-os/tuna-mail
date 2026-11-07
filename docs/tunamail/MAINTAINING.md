@@ -21,13 +21,13 @@ There are three rules:
 
 ## What belongs where
 
-| Kind of change | Where it goes | How |
-|---|---|---|
-| Bug fix, security fix, UI polish, docs, translations, anything provider-neutral | **Upstream** | A branch from `upstream/main` and a PR to thunderbird/thunderbird-android (see "Sending a change upstream") |
+|                                                                Kind of change                                                                 |              Where it goes               |                                                     How                                                     |
+|-----------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+| Bug fix, security fix, UI polish, docs, translations, anything provider-neutral                                                               | **Upstream**                             | A branch from `upstream/main` and a PR to thunderbird/thunderbird-android (see "Sending a change upstream") |
 | A seam the fork needs in shared code (a generic backend hook, an account type the setup flow can offer) that has a use beyond Tuta and Proton | **Upstream**, phrased provider-neutrally | Propose it without mentioning Tuta, Proton or the fork; if upstream declines, it stays here as a touchpoint |
-| The Tuna Mail app: identity, icon, theme, wiring, OAuth configuration | **Fork only** | `app-tunamail/`, `components/ui/bolt/.../theme/tunamail/` and `bolt_tunamail_logo.xml` |
-| Native Tuta and Proton accounts | **Fork only** | New `backend:tuta` / `backend:proton` modules, wired in `app-tunamail` |
-| Build environment, fork CI, sync tooling, these docs | **Fork only** | `tools/build-env/`, `tools/tunamail/`, `docs/tunamail/`, `.github/workflows/tunamail-*.yml` |
+| The Tuna Mail app: identity, icon, theme, wiring, OAuth configuration                                                                         | **Fork only**                            | `app-tunamail/`, `components/ui/bolt/.../theme/tunamail/` and `bolt_tunamail_logo.xml`                      |
+| Native Tuta and Proton accounts                                                                                                               | **Fork only**                            | New `backend:tuta` / `backend:proton` modules, wired in `app-tunamail`                                      |
+| Build environment, fork CI, sync tooling, these docs                                                                                          | **Fork only**                            | `tools/build-env/`, `tools/tunamail/`, `docs/tunamail/`, `.github/workflows/tunamail-*.yml`                 |
 
 When in doubt, ask whether the change would make sense in upstream with no Tuta or Proton account
 and no Tuna Mail app. If it would, it goes upstream.
@@ -73,10 +73,12 @@ and no Tuna Mail app. If it would, it goes upstream.
 - **Feature flags:** the flag catalog knows only the apps `k9` and `thunderbird`, so
   `TunaMailApp.appName` reports `k9` and Tuna Mail follows K-9 Mail's catalog overrides. Flags Tuna
   Mail must not follow are pinned by `TunaMailFeatureFlagProvider`, bound in the evaluator's
-  in-memory slot (ahead of the remote and bundled catalogs): today that is
-  `thundermail_onboarding_enabled = false`, which hides the Thundermail sign-in panel in account
-  setup. In debug builds the runtime debug overrides still win over the pinned values. When
-  upstream adds a flag for a Thunderbird-only service, pin it there.
+  in-memory slot (ahead of the remote and bundled catalogs): `thundermail_onboarding_enabled =
+  false`, which hides the Thundermail sign-in panel in account setup, and upstream's Compose
+  migration flags ([compose.md](compose.md)). In debug builds the runtime debug overrides still win
+  over the pinned values. When upstream adds a flag for a Thunderbird-only service, pin it there.
+  When upstream promotes or deletes a pinned flag, the merge stops compiling at
+  `GeneratedFeatureFlagKey`; drop the pin then.
 - **OAuth:** Google and Microsoft only, with client ids from the build ([oauth.md](oauth.md));
   a provider with no id is left out.
 - **Native code:** `ndkVersion` and `abiFilters` (`arm64-v8a`, `x86_64`) are set in
