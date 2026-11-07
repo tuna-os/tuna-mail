@@ -30,7 +30,7 @@ Obtainium installs and updates apps straight from GitHub releases. Add Tuna Mail
 
 | Setting | Value |
 |---|---|
-| App source URL | `https://github.com/tuna-os/thunderbird-android` |
+| App source URL | `https://github.com/tuna-os/tuna-mail` |
 | Filter release titles by regex | `^Tuna Mail ` |
 | Filter links by regex | `-arm64-v8a\.apk$` (or `-x86_64\.apk$` on an x86_64 device) |
 | Version string extraction regular expression | `[0-9]+(\.[0-9]+)*` (the tags are `tunamail-v<versionName>`) |

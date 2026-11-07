@@ -42,7 +42,7 @@ jobs:
   release:
     name: Build, sign and publish Tuna Mail
     # Only on the fork; upstream has no Tuna Mail and no Tuna Mail key.
-    if: github.repository == 'tuna-os/thunderbird-android'
+    if: github.repository == 'tuna-os/tuna-mail'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
