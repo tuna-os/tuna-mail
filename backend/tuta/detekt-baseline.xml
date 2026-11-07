@@ -1,0 +1,17 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>AlsoCouldBeApply:TutaOutgoing.kt:TutaOutgoing.Companion$also</ID>
+    <ID>ComplexCondition:TutaSync.kt:TutaSync$listed.size &lt; limit &amp;&amp; listed.size &lt; firstPage.exists &amp;&amp; page.isNotEmpty() &amp;&amp; !page.last().isOlderThan(earliestDate)</ID>
+    <ID>MaxLineLength:TutaBackendTest.kt:TutaBackendTest$api.mails[INBOX] = mutableListOf(listed(mail("m2", hasAttachments = true)), listed(mail("m1", isUnread = false)))</ID>
+    <ID>MaxLineLength:TutaBackendTest.kt:TutaBackendTest$assertThat(api.markReadCalls.map { it.first.size to it.second }).containsExactly(50 to true, 50 to true, 20 to true)</ID>
+    <ID>MaxLineLength:TutaBackendTest.kt:TutaBackendTest$assertThat(request.attachments.map { it.name to it.data.decodeToString() }).containsExactly("notes.txt" to "notes")</ID>
+    <ID>MaxLineLength:TutaBackendTest.kt:TutaBackendTest$headers = "Message-ID: &lt;m1@example.com&gt;\r\nIn-Reply-To: &lt;parent@example.com&gt;\r\nReferences: &lt;root@example.com&gt;\r\n &lt;parent@example.com&gt;\r\n"</ID>
+    <ID>ThrowsCount:TutaCommands.kt:TutaCommands$fun delete</ID>
+    <ID>TooManyFunctions:TutaApi.kt:SdkTutaApi : TutaApi</ID>
+    <ID>TooManyFunctions:TutaApi.kt:TutaApi</ID>
+    <ID>TooManyFunctions:TutaCommands.kt:TutaCommands</ID>
+    <ID>TooManyFunctions:TutaMime.kt:TutaMime</ID>
+  </CurrentIssues>
+</SmellBaseline>

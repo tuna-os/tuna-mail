@@ -214,6 +214,7 @@ dependencies {
     // Native Tuta and Proton accounts (see docs/tunamail/providers.md).
     implementation(projects.feature.tunamail.provider)
     implementation(projects.feature.tunamail.proton)
+    implementation(projects.feature.tunamail.tuta)
 
     debugImplementation(projects.backend.demo)
     debugImplementation(projects.feature.autodiscovery.demo)

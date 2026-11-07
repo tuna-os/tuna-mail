@@ -16,8 +16,10 @@ include(
     ":app-tunamail",
     ":backend:proton",
     ":backend:tunasession",
+    ":backend:tuta",
     ":feature:tunamail:provider",
     ":feature:tunamail:proton",
+    ":feature:tunamail:tuta",
 )
 
 class TunaSdk(val name: String, val url: String, val sha256: String)

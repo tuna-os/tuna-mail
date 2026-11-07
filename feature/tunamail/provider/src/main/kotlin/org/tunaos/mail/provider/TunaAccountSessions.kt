@@ -20,10 +20,12 @@ class TunaAccountSessions(
      */
     fun sessionFor(accountId: AccountId, serverType: String, email: String): String? {
         val accountUuid = accountId.toString()
-        store.get(accountUuid)?.let { return it }
+        return store.get(accountUuid) ?: adoptParkedSession(accountId, serverType, email)
+    }
 
+    private fun adoptParkedSession(accountId: AccountId, serverType: String, email: String): String? {
         val session = handoff.take(serverType, email) ?: return null
-        store.put(accountUuid, session)
+        store.put(accountId.toString(), session)
         accountManager.updateSync(accountId) { it.copy(isUploadSentMessages = false) }
         return session
     }
