@@ -28,13 +28,13 @@ apksigner verify --print-certs tuna-mail-<versionName>-arm64-v8a.apk   # SHA-256
 
 Obtainium installs and updates apps straight from GitHub releases. Add Tuna Mail with:
 
-| Setting | Value |
-|---|---|
-| App source URL | `https://github.com/tuna-os/tuna-mail` |
-| Filter release titles by regex | `^Tuna Mail ` |
-| Filter links by regex | `-arm64-v8a\.apk$` (or `-x86_64\.apk$` on an x86_64 device) |
+|                   Setting                    |                            Value                             |
+|----------------------------------------------|--------------------------------------------------------------|
+| App source URL                               | `https://github.com/tuna-os/tuna-mail`                       |
+| Filter release titles by regex               | `^Tuna Mail `                                                |
+| Filter links by regex                        | `-arm64-v8a\.apk$` (or `-x86_64\.apk$` on an x86_64 device)  |
 | Version string extraction regular expression | `[0-9]+(\.[0-9]+)*` (the tags are `tunamail-v<versionName>`) |
-| Include prereleases | off |
+| Include prereleases                          | off                                                          |
 
 The title filter keeps Obtainium on Tuna Mail releases should the repository ever carry others; the
 version regex turns the tag `tunamail-v0.1.0` into `0.1.0`, the app's `versionName`, so Obtainium's

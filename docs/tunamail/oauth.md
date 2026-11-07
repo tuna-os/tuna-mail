@@ -44,12 +44,12 @@ Release builds, and every APK on the GitHub releases, are signed with the Tuna M
 (alias `tunamail`, kept offline and in the release workflow's secrets; see
 [MAINTAINING.md](MAINTAINING.md#releasing)). Register the `release` row with these values:
 
-| What | Value |
-|---|---|
-| Certificate | `CN=Tuna Mail, O=TunaOS, C=US`, RSA 4096, SHA384withRSA, valid 2026-11-07 to 2056-10-30 |
-| SHA-1 (Google) | `C9:2B:6B:19:25:4A:CD:A5:A8:F5:A1:A9:F1:06:0D:87:05:84:50:2F` |
-| SHA-256 | `41:47:22:60:29:05:33:43:2A:BF:DB:7D:80:11:FE:A8:25:67:9D:74:FB:36:03:6D:32:C6:31:D7:5B:F1:E8:AD` |
-| Signature hash (Microsoft) | `yStrGSVKzaWo9aGp8QYNhwWEUC8=` |
+|            What            |                                               Value                                               |
+|----------------------------|---------------------------------------------------------------------------------------------------|
+| Certificate                | `CN=Tuna Mail, O=TunaOS, C=US`, RSA 4096, SHA384withRSA, valid 2026-11-07 to 2056-10-30           |
+| SHA-1 (Google)             | `C9:2B:6B:19:25:4A:CD:A5:A8:F5:A1:A9:F1:06:0D:87:05:84:50:2F`                                     |
+| SHA-256                    | `41:47:22:60:29:05:33:43:2A:BF:DB:7D:80:11:FE:A8:25:67:9D:74:FB:36:03:6D:32:C6:31:D7:5B:F1:E8:AD` |
+| Signature hash (Microsoft) | `yStrGSVKzaWo9aGp8QYNhwWEUC8=`                                                                    |
 
 The release redirect URI for Microsoft is therefore
 `msauth://org.tunaos.mail/yStrGSVKzaWo9aGp8QYNhwWEUC8%3D`. The release workflow builds the

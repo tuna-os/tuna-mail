@@ -189,10 +189,10 @@ and that it carries the native libraries of its own ABI only.
 
 The workflow needs these Actions secrets:
 
-| Secret | What it is |
-|---|---|
-| `TUNAMAIL_KEYSTORE_BASE64` | The release keystore (PKCS12, alias `tunamail`), base64 |
-| `TUNAMAIL_KEYSTORE_PASSWORD` | Its store password, which is also the key password |
+|            Secret            |                       What it is                        |
+|------------------------------|---------------------------------------------------------|
+| `TUNAMAIL_KEYSTORE_BASE64`   | The release keystore (PKCS12, alias `tunamail`), base64 |
+| `TUNAMAIL_KEYSTORE_PASSWORD` | Its store password, which is also the key password      |
 
 and, optionally, the `TUNAMAIL_GOOGLE_CLIENT_ID` and `TUNAMAIL_MICROSOFT_CLIENT_ID` variables or
 secrets ([oauth.md](oauth.md)). Releases are installed from GitHub, directly or through Obtainium;
