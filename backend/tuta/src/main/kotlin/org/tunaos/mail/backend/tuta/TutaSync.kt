@@ -95,7 +95,12 @@ internal class TutaSync(
     }
 
     /** The folder's newest mails, up to [limit] and not older than [earliestDate], newest first. */
-    private fun listMails(folderServerId: String, firstPage: SyncPage, limit: Int, earliestDate: Date?): List<ListedMail> {
+    private fun listMails(
+        folderServerId: String,
+        firstPage: SyncPage,
+        limit: Int,
+        earliestDate: Date?,
+    ): List<ListedMail> {
         val listed = firstPage.messages.toMutableList()
         var page = firstPage.messages
         while (listed.size < limit && listed.size < firstPage.exists && page.isNotEmpty() &&

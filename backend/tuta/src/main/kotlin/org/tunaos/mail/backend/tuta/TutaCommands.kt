@@ -19,7 +19,9 @@ internal class TutaCommands(
     fun setFlag(messageServerIds: List<String>, flag: Flag, newState: Boolean) {
         when (flag) {
             Flag.SEEN -> markRead(messageServerIds, newState)
+
             Flag.FLAGGED -> setFlagged(messageServerIds, newState)
+
             // Tuta keeps no other flag a client can set; they stay on this device.
             else -> Unit
         }

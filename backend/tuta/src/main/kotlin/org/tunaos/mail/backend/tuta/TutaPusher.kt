@@ -98,7 +98,9 @@ internal class TutaPusher(
     private fun onEvent(event: TutaWatchEvent) {
         val folders = when (event) {
             TutaWatchEvent.Ready, TutaWatchEvent.Reconnect, TutaWatchEvent.FoldersChanged -> folderServerIds
-            is TutaWatchEvent.MailChanged -> event.folder?.let { setOf(it) intersect folderServerIds } ?: folderServerIds
+
+            is TutaWatchEvent.MailChanged -> event.folder?.let { setOf(it) intersect folderServerIds }
+                ?: folderServerIds
         }
         folders.forEach(callback::onPushEvent)
     }

@@ -158,7 +158,10 @@ internal object TutaMime {
         val mimeType = attachment.mimeType?.takeIf { it.contains('/') } ?: "application/octet-stream"
         appendHeader("Content-Type", MimeParameterEncoder.encode(mimeType, mapOf("name" to attachment.name)))
         appendHeader("Content-Transfer-Encoding", "base64")
-        appendHeader("Content-Disposition", MimeParameterEncoder.encode(disposition, mapOf("filename" to attachment.name)))
+        appendHeader(
+            "Content-Disposition",
+            MimeParameterEncoder.encode(disposition, mapOf("filename" to attachment.name)),
+        )
         attachment.cid?.takeIf { it.isNotBlank() }?.let { appendHeader("Content-ID", "<${it.trim('<', '>')}>") }
         append(CRLF)
         appendBase64Lines(attachment.data.filterNot { it.isWhitespace() })

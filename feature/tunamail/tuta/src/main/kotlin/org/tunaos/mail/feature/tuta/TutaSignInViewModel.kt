@@ -150,16 +150,23 @@ enum class TutaSignInError {
 /** The message for a sign-in failure; [TutaErrorCode.SECOND_FACTOR_REQUIRED] is not one, it asks for the code. */
 internal fun TutaErrorCode.toSignInError(): TutaSignInError? = when (this) {
     TutaErrorCode.SECOND_FACTOR_REQUIRED -> null
+
     TutaErrorCode.LOGIN_FAILED -> TutaSignInError.LOGIN_FAILED
+
     TutaErrorCode.INVALID_TOTP, TutaErrorCode.SECOND_FACTOR_FAILED -> TutaSignInError.INVALID_TOTP
+
     TutaErrorCode.RATE_LIMITED -> TutaSignInError.RATE_LIMITED
+
     TutaErrorCode.PENDING_SESSION_EXPIRED -> TutaSignInError.PENDING_SESSION_EXPIRED
+
     TutaErrorCode.UNSUPPORTED_U2F,
     TutaErrorCode.UNSUPPORTED_WEBAUTHN,
     TutaErrorCode.UNSUPPORTED_SECOND_FACTOR,
     -> TutaSignInError.UNSUPPORTED_SECOND_FACTOR
 
     TutaErrorCode.TRANSPORT_FAILED, TutaErrorCode.REQUEST_FAILED, TutaErrorCode.TIMEOUT -> TutaSignInError.NETWORK
+
     TutaErrorCode.CLIENT_OUTDATED -> TutaSignInError.CLIENT_OUTDATED
+
     else -> TutaSignInError.UNKNOWN
 }

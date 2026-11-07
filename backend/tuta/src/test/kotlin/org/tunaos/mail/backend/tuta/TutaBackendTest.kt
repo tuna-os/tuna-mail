@@ -95,7 +95,8 @@ class TutaBackendTest {
     @Test
     fun `sync stores new mail whole, or as its envelope when it has attachments`() {
         backend.refreshFolderList()
-        api.mails[INBOX] = mutableListOf(listed(mail("m2", hasAttachments = true)), listed(mail("m1", isUnread = false)))
+        api.mails[INBOX] =
+            mutableListOf(listed(mail("m2", hasAttachments = true)), listed(mail("m1", isUnread = false)))
         api.messages["m1"] = message(mail("m1", isUnread = false), html = "<p>Hello</p>")
 
         backend.sync(INBOX, syncConfig(), listener)
@@ -197,7 +198,8 @@ class TutaBackendTest {
         api.messages["m1"] = message(
             mail("m1", hasAttachments = true),
             html = "<p>Report attached</p>",
-            headers = "Message-ID: <m1@example.com>\r\nIn-Reply-To: <parent@example.com>\r\nReferences: <root@example.com>\r\n <parent@example.com>\r\n",
+            headers = "Message-ID: <m1@example.com>\r\nIn-Reply-To: <parent@example.com>\r\n" +
+                "References: <root@example.com>\r\n <parent@example.com>\r\n",
             attachments = listOf(Attachment(name = "report.pdf", mimeType = "application/pdf", data = "JVBERi0=")),
         )
 
@@ -216,7 +218,11 @@ class TutaBackendTest {
 
         backend.setFlag(INBOX, ids, Flag.SEEN, true)
 
-        assertThat(api.markReadCalls.map { it.first.size to it.second }).containsExactly(50 to true, 50 to true, 20 to true)
+        assertThat(api.markReadCalls.map { it.first.size to it.second }).containsExactly(
+            50 to true,
+            50 to true,
+            20 to true,
+        )
     }
 
     @Test
@@ -309,7 +315,11 @@ class TutaBackendTest {
         assertThat(request.bcc.map { it.address }).containsExactly("carol@example.com")
         assertThat(request.subject).isEqualTo("Re: Plans")
         assertThat(request.bodyHtml).isEqualTo("<p>Sounds good</p>")
-        assertThat(request.attachments.map { it.name to it.data.decodeToString() }).containsExactly("notes.txt" to "notes")
+        assertThat(
+            request.attachments.map {
+                it.name to it.data.decodeToString()
+            },
+        ).containsExactly("notes.txt" to "notes")
         assertThat(request.thread.inReplyTo).isEqualTo("<parent@example.com>")
         assertThat(request.thread.action).isEqualTo(ThreadAction.REPLY)
         assertThat(request.confidential).isEqualTo(false)

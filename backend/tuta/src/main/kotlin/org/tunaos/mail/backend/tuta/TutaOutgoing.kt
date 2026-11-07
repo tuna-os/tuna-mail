@@ -127,7 +127,10 @@ internal data class TutaOutgoing(
             val mimeType = part.mimeType.lowercase()
             val isAttachment = part.disposition?.trimStart()?.lowercase()?.startsWith("attachment") == true
             when {
-                !isAttachment && mimeType == "text/html" && html == null -> html = MessageExtractor.getTextFromPart(part)
+                !isAttachment && mimeType == "text/html" && html == null ->
+                    html =
+                        MessageExtractor.getTextFromPart(part)
+
                 !isAttachment && mimeType == "text/plain" && plain == null ->
                     plain = MessageExtractor.getTextFromPart(part)
 

@@ -68,7 +68,8 @@ class TutaMimeTest {
         val message = TutaMime.fullMessage(
             TutaBackendTest.message(
                 TutaBackendTest.mail("m1"),
-                headers = "Received: from x\r\nIN-REPLY-TO: <parent@example.com>\r\nReferences: <root@example.com>\r\n" +
+                headers =
+                "Received: from x\r\nIN-REPLY-TO: <parent@example.com>\r\nReferences: <root@example.com>\r\n" +
                     "\t<parent@example.com>\r\nSubject: ignored\r\n",
             ),
         )
