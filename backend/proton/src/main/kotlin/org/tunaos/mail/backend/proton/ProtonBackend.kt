@@ -137,7 +137,7 @@ class ProtonBackend(
             throw MessagingException("Proton can only empty Trash and Spam, not $folderServerId", true)
         }
         protonCall {
-            while (api.emptyFolder(folderServerId).more) Unit
+            while (api.emptyFolder(folderServerId).more) { /* drain */ }
         }
     }
 

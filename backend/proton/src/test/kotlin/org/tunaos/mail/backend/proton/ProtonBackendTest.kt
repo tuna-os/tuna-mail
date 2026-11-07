@@ -348,7 +348,7 @@ class ProtonBackendTest {
         assertThat(secondStep.messageServerIds.size).isEqualTo(151)
         assertThat(secondStep.nextCursor).isNull()
         assertThat(secondStep.isHeadersOnly).isTrue()
-        assertThat(api.searchCalls.map { it.second }).containsExactly(null, "150", "200")
+        assertThat(api.searchCalls.map { it.second }).containsExactly(null, "150", "200", "350")
     }
 
     @Test
