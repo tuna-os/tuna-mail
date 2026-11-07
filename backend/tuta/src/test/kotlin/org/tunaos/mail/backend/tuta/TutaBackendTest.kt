@@ -345,7 +345,39 @@ class TutaBackendTest {
     }
 
     @Test
-    fun `search follows Tuta's scan through the folder and returns the matches newest first`() {
+    fun `searchStep follows Tuta's scan for up to two calls and returns the cursor to go on`() {
+        api.mails[INBOX] = MutableList(1200) { index ->
+            val id = if (index in setOf(0, 700, 1100)) "needle-$index" else "m$index"
+            listed(mail(id))
+        }
+
+        val firstStep = backend.searchStep(INBOX, " Needle ", null, null, false, cursor = null, wanted = 10)
+
+        assertThat(firstStep.messageServerIds).containsExactly("needle-0", "needle-700")
+        assertThat(firstStep.nextCursor).isEqualTo("1000")
+        assertThat(firstStep.searchedCount).isEqualTo(1000)
+        assertThat(firstStep.isHeadersOnly).isFalse()
+        assertThat(api.searchCalls.map { it.second }).containsExactly(null, "500")
+        assertThat(api.searchCalls.first().first.keyword).isEqualTo("Needle")
+
+        val secondStep = backend.searchStep(
+            folderServerId = INBOX,
+            query = " Needle ",
+            requiredFlags = null,
+            forbiddenFlags = null,
+            performFullTextSearch = false,
+            cursor = firstStep.nextCursor,
+            wanted = 10,
+        )
+
+        assertThat(secondStep.messageServerIds).containsExactly("needle-1100")
+        assertThat(secondStep.nextCursor).isNull()
+        assertThat(secondStep.searchedCount).isEqualTo(200)
+        assertThat(api.searchCalls.map { it.second }).containsExactly(null, "500", "1000")
+    }
+
+    @Test
+    fun `search runs the first step only`() {
         api.mails[INBOX] = MutableList(1200) { index ->
             val id = if (index in setOf(0, 700, 1100)) "needle-$index" else "m$index"
             listed(mail(id))
@@ -353,11 +385,8 @@ class TutaBackendTest {
 
         val ids = backend.search(INBOX, " Needle ", null, null, performFullTextSearch = false)
 
-        assertThat(ids).containsExactly("needle-0", "needle-700", "needle-1100")
-        assertThat(api.searchCalls.map { it.second }).containsExactly(null, "500", "1000")
-        assertThat(api.searchCalls.first().first.keyword).isEqualTo("Needle")
+        assertThat(ids).containsExactly("needle-0", "needle-700")
     }
-
     @Test
     fun `search narrows unread on the server and checks the flagged label on the results`() {
         api.labels += Label("label-flag", "Flagged", "#f5a623")

@@ -318,19 +318,48 @@ class ProtonBackendTest {
     }
 
     @Test
-    fun `search asks Proton for the keyword in the folder and pages through the results, newest first`() {
-        repeat(150) { api.addMessage("old-$it", INBOX, dateMs = 1_000L + it) }
+    fun `searchStep asks Proton for the keyword and pages up to three pages or the wanted count`() {
+        repeat(350) { api.addMessage("old-$it", INBOX, dateMs = 1_000L + it) }
         api.messages["new"] = FakeProtonApi.header("new", listOf(INBOX), dateMs = 9_000)
         api.addMessage("elsewhere", ARCHIVE, dateMs = 10_000)
 
-        val ids = backend.search(INBOX, " subject ", null, null, performFullTextSearch = true)
+        val firstStep = backend.searchStep(INBOX, " subject ", null, null, true, cursor = null, wanted = 200)
 
-        assertThat(ids.size).isEqualTo(151)
-        assertThat(ids.first()).isEqualTo("new")
-        assertThat(ids).doesNotContain("elsewhere")
-        assertThat(api.searchCalls.map { it.second }).containsExactly(null, "100")
+        assertThat(firstStep.messageServerIds.size).isEqualTo(200)
+        assertThat(firstStep.messageServerIds.first()).isEqualTo("new")
+        assertThat(firstStep.messageServerIds).doesNotContain("elsewhere")
+        assertThat(firstStep.nextCursor).isEqualTo("200")
+        assertThat(firstStep.searchedCount).isNull()
+        assertThat(firstStep.isHeadersOnly).isTrue()
+        assertThat(api.searchCalls.map { it.second }).containsExactly(null, "150")
         assertThat(api.searchCalls.first().first.keyword).isEqualTo("subject")
         assertThat(api.searchCalls.first().first.folder).isEqualTo(INBOX)
+
+        val secondStep = backend.searchStep(
+            folderServerId = INBOX,
+            query = " subject ",
+            requiredFlags = null,
+            forbiddenFlags = null,
+            performFullTextSearch = true,
+            cursor = firstStep.nextCursor,
+            wanted = 200,
+        )
+
+        assertThat(secondStep.messageServerIds.size).isEqualTo(151)
+        assertThat(secondStep.nextCursor).isNull()
+        assertThat(secondStep.isHeadersOnly).isTrue()
+        assertThat(api.searchCalls.map { it.second }).containsExactly(null, "150", "200")
+    }
+
+    @Test
+    fun `search runs the first step only`() {
+        repeat(150) { api.addMessage("old-$it", INBOX, dateMs = 1_000L + it) }
+        api.messages["new"] = FakeProtonApi.header("new", listOf(INBOX), dateMs = 9_000)
+
+        val ids = backend.search(INBOX, " subject ", null, null, performFullTextSearch = true)
+
+        assertThat(ids.first()).isEqualTo("new")
+        assertThat(ids.size).isEqualTo(100)
     }
 
     @Test

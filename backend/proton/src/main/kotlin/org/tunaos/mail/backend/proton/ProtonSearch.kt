@@ -1,21 +1,27 @@
 package org.tunaos.mail.backend.proton
 
+import net.thunderbird.backend.api.search.SearchStep
 import net.thunderbird.core.common.mail.Flag
 import org.tunaos.proton.ProtonSearchQuery
 
 /**
  * Server search of one folder through the SDK's `search`. Proton can only search what it can read: the subject,
  * the sender and the recipients, never bodies or attachments, which are end-to-end encrypted. So the query is a
- * keyword over those, full text or not, and read and starred state narrow it on the server. Pages are followed
- * until [MAX_RESULTS] matches or [MAX_PAGES] pages; newest first.
+ * keyword over those, full text or not, and read and starred state narrow it on the server; the other flags the
+ * search asks about are checked on the messages found.
+ *
+ * A [step] follows Proton's pages, newest first, for up to [PAGES_PER_STEP] pages and stops early once it has the
+ * matches it wants; it returns the cursor for the next step.
  */
 internal class ProtonSearch(private val api: ProtonApi) {
-    fun search(
+    fun step(
         folderServerId: String,
         query: String?,
         requiredFlags: Set<Flag>?,
         forbiddenFlags: Set<Flag>?,
-    ): List<String> {
+        cursor: String?,
+        wanted: Int,
+    ): SearchStep {
         val required = requiredFlags.orEmpty()
         val forbidden = forbiddenFlags.orEmpty()
         val searchQuery = ProtonSearchQuery(
@@ -25,24 +31,26 @@ internal class ProtonSearch(private val api: ProtonApi) {
             folder = folderServerId,
         )
         if (searchQuery.keyword == null && searchQuery.isUnread == null && searchQuery.isStarred == null) {
-            return emptyList()
+            return SearchStep(emptyList(), nextCursor = null, searchedCount = null, isHeadersOnly = true)
         }
 
+        val target = if (wanted > 0) wanted else DEFAULT_WANTED
         val ids = mutableListOf<String>()
-        var cursor: String? = null
+        var nextCursor = cursor
         var pages = 0
         protonCall {
             do {
-                val page = api.search(searchQuery, PAGE_SIZE, cursor)
+                val limit = (target - ids.size).coerceAtMost(MAX_PAGE_SIZE)
+                val page = api.search(searchQuery, limit, nextCursor)
                 page.messages.filter { header ->
                     val flags = header.flags().filterValues { it }.keys
                     flags.containsAll(required) && flags.none { it in forbidden }
                 }.mapTo(ids) { it.id }
-                cursor = page.nextCursor
+                nextCursor = page.nextCursor
                 pages++
-            } while (cursor != null && ids.size < MAX_RESULTS && pages < MAX_PAGES)
+            } while (nextCursor != null && ids.size < target && pages < PAGES_PER_STEP)
         }
-        return ids.distinct().take(MAX_RESULTS)
+        return SearchStep(ids.distinct(), nextCursor, searchedCount = null, isHeadersOnly = true)
     }
 
     /** True when [flag] is required, false when forbidden, null when the search does not care. */
@@ -53,8 +61,12 @@ internal class ProtonSearch(private val api: ProtonApi) {
     }
 
     companion object {
-        const val PAGE_SIZE = 100
-        const val MAX_RESULTS = 200
-        const val MAX_PAGES = 10
+        const val PAGES_PER_STEP = 3
+
+        /** The matches a step looks for when the caller names no number. */
+        const val DEFAULT_WANTED = 100
+
+        /** The most hits the SDK hands back from one call. */
+        private const val MAX_PAGE_SIZE = 150
     }
 }

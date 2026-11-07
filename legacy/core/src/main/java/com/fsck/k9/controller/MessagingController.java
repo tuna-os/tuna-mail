@@ -80,6 +80,8 @@ import com.fsck.k9.mailstore.SpecialLocalFoldersCreator;
 import com.fsck.k9.notification.NotificationController;
 import com.fsck.k9.notification.NotificationStrategy;
 import kotlinx.coroutines.Dispatchers;
+import net.thunderbird.backend.api.search.SearchStep;
+import net.thunderbird.backend.api.search.SteppedSearch;
 import net.thunderbird.core.android.account.DeletePolicy;
 import net.thunderbird.core.android.account.LegacyAccount;
 import net.thunderbird.core.android.account.LegacyAccountManager;
@@ -481,16 +483,32 @@ public class MessagingController implements MessagingControllerRegistry, Messagi
 
     public Future<?> searchRemoteMessages(AccountId accountId, long folderId, String query, Set<Flag> requiredFlags,
         Set<Flag> forbiddenFlags, MessagingListener listener) {
+        return searchRemoteMessages(accountId, folderId, query, requiredFlags, forbiddenFlags, null, listener);
+    }
+
+    /**
+     * Searches on the server. For a backend whose search runs in steps ({@link SteppedSearch}), this is one step,
+     * going on from {@code cursor} (null for the first); the listener hears where the next one goes on from.
+     */
+    public Future<?> searchRemoteMessages(AccountId accountId, long folderId, String query, Set<Flag> requiredFlags,
+        Set<Flag> forbiddenFlags, String cursor, MessagingListener listener) {
         Log.i(TAG, "searchRemoteMessages (acct = %s, folderId = %d, query = %s)", accountId, folderId, query);
 
         return threadPool.submit(() ->
-            searchRemoteMessagesSynchronous(accountId, folderId, query, requiredFlags, forbiddenFlags, listener)
+            searchRemoteMessagesSynchronous(accountId, folderId, query, requiredFlags, forbiddenFlags, cursor,
+                listener)
         );
     }
 
     @VisibleForTesting
     void searchRemoteMessagesSynchronous(AccountId accountId, long folderId, String query, Set<Flag> requiredFlags,
         Set<Flag> forbiddenFlags, MessagingListener listener) {
+        searchRemoteMessagesSynchronous(accountId, folderId, query, requiredFlags, forbiddenFlags, null, listener);
+    }
+
+    @VisibleForTesting
+    void searchRemoteMessagesSynchronous(AccountId accountId, long folderId, String query, Set<Flag> requiredFlags,
+        Set<Flag> forbiddenFlags, String cursor, MessagingListener listener) {
 
         LegacyAccount account = accountManager.findById(accountId);
 
@@ -513,8 +531,18 @@ public class MessagingController implements MessagingControllerRegistry, Messagi
             Backend backend = getBackend(accountId);
 
             boolean performFullTextSearch = account.isRemoteSearchFullText();
-            List<String> messageServerIds = backend.search(folderServerId, query, requiredFlags, forbiddenFlags,
-                performFullTextSearch);
+            List<String> messageServerIds;
+            if (backend instanceof SteppedSearch) {
+                SearchStep step = ((SteppedSearch) backend).searchStep(folderServerId, query, requiredFlags,
+                    forbiddenFlags, performFullTextSearch, cursor, account.getRemoteSearchNumResults());
+                messageServerIds = step.getMessageServerIds();
+                if (listener != null) {
+                    listener.remoteSearchStepFinished(folderId, step);
+                }
+            } else {
+                messageServerIds = backend.search(folderServerId, query, requiredFlags, forbiddenFlags,
+                    performFullTextSearch);
+            }
 
             Log.i(TAG, "Remote search got %d results", messageServerIds.size());
 

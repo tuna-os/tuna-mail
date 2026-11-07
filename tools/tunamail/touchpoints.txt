@@ -39,6 +39,13 @@ legacy/ui/legacy/src/main/java/com/fsck/k9/activity/MessageCompose.java
 #   for any server type it has no factory for, instead of always giving up.
 app-common/src/main/kotlin/net/thunderbird/app/common/feature/mail/RemoteFolderCreatorResolver.kt
 app-common/src/main/kotlin/net/thunderbird/app/common/feature/mail/FeatureMailModule.kt
+# - SteppedSearch (a new file in backend/api/src/main/java/net/thunderbird/backend/api/search): backends whose
+#   server search is a scan the server resumes from a cursor run one step at a time, so remote search shows what
+#   it found and lets the user search further, instead of holding the list until the whole folder is searched.
+legacy/message/src/main/java/app/k9mail/legacy/message/controller/MessagingListener.java
+legacy/core/src/main/java/com/fsck/k9/controller/MessagingController.java
+legacy/core/src/main/java/com/fsck/k9/controller/MessagingControllerWrapper.kt
+legacy/core/src/test/java/com/fsck/k9/controller/MessagingControllerTest.java
 
 # Says that Tuna Mail builds link the GPL-3.0-or-later Tuta and Proton SDKs (appended paragraph).
 NOTICE
