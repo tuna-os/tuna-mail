@@ -20,6 +20,8 @@ name: Tuna Mail - Release
 
 on:
   push:
+    branches:
+      - feat/tunamail-release
     tags:
       - 'tunamail-v*'
   workflow_dispatch:
