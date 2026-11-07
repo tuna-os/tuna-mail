@@ -178,3 +178,4 @@ configuration does not recognize can still be set up as one of the extension's a
 > the account's remote search limit) and returns the cursor to continue from. `MessagingController` runs one
 > step at a time and notifies `MessagingListener.remoteSearchStepFinished`, so the message list can show what
 > was found and let the user search further. Non-stepped backends keep calling `Backend.search` as before.
+
