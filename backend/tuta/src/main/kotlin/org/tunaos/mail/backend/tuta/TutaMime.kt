@@ -78,6 +78,8 @@ internal object TutaMime {
         for ((name, value) in threadingHeaders(originalHeaders)) {
             appendHeader(name, value)
         }
+        // A draft opens in the composer as confidential as it was saved.
+        appendHeader(TUTA_CONFIDENTIAL_HEADER, confidentialHeaderValue(header.confidential))
     }
 
     private fun StringBuilder.appendHeader(name: String, value: String) {

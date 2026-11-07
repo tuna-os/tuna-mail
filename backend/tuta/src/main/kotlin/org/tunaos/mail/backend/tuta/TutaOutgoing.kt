@@ -30,12 +30,20 @@ internal data class TutaOutgoing(
     val bodyHtml: String,
     val attachments: List<OutgoingAttachment>,
     val thread: MailThread,
+    /** End to end encrypted for everyone, recipients outside Tuta behind a password ([TUTA_CONFIDENTIAL_HEADER]). */
+    val confidential: Boolean = false,
 ) {
+    /** Every recipient's address, each once. */
+    val recipientAddresses: List<String>
+        get() = (to + cc + bcc).map { it.address }.distinctBy { it.lowercase() }
+
     /**
-     * An ordinary send: Tuta encrypts end to end for recipients on Tuta anyway, and mail to anyone else goes out as
-     * a mail client sends it, so [SendRequest.ordinaryConfirmed] stands for the user's choice to send it.
+     * The send. Confidential, each recipient outside Tuta needs one of [passwords] (address to password), and Tuta
+     * refuses the send otherwise. Not confidential, Tuta still encrypts end to end for recipients on Tuta, and mail to
+     * anyone else goes out as a mail client sends it, so [SendRequest.ordinaryConfirmed] stands for the user's choice
+     * to send it that way; the passwords are not sent.
      */
-    fun toSendRequest() = SendRequest(
+    fun toSendRequest(passwords: Map<String, String> = emptyMap()) = SendRequest(
         sender = sender.address,
         senderName = sender.name,
         to = to,
@@ -44,12 +52,14 @@ internal data class TutaOutgoing(
         replyTos = replyTos,
         subject = subject,
         bodyHtml = bodyHtml,
-        confidential = false,
-        ordinaryConfirmed = true,
+        confidential = confidential,
+        ordinaryConfirmed = !confidential,
+        passwords = if (confidential) passwords else emptyMap(),
         attachments = attachments,
         thread = thread,
     )
 
+    /** The draft, which says whether it is to go confidential, so Tuta's own apps open it the same way. */
     fun toDraftRequest() = DraftRequest(
         sender = sender.address,
         senderName = sender.name,
@@ -59,7 +69,7 @@ internal data class TutaOutgoing(
         replyTos = replyTos,
         subject = subject,
         bodyHtml = bodyHtml,
-        confidential = false,
+        confidential = confidential,
         attachments = attachments,
         thread = thread,
     )
@@ -92,6 +102,7 @@ internal data class TutaOutgoing(
                         else -> ThreadAction.REPLY
                     },
                 ),
+                confidential = isConfidential(message),
             )
         }
 

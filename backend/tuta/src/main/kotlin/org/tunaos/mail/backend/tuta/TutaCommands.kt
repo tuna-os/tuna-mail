@@ -15,6 +15,7 @@ internal class TutaCommands(
     private val connection: TutaConnection,
     private val folders: TutaFolders,
     private val labels: TutaLabels,
+    private val passwords: TutaRecipientPasswords,
 ) {
     fun setFlag(messageServerIds: List<String>, flag: Flag, newState: Boolean) {
         when (flag) {
@@ -77,9 +78,30 @@ internal class TutaCommands(
         connection.call { emptyFolder(it, folderServerId) }
     }
 
+    /**
+     * Sends [message]. A confidential one goes with the passwords the composer handed over for it, and, for a recipient
+     * outside Tuta it has none for (a message queued before the app restarted), the one its Tuta contact keeps; Tuta
+     * refuses the send when a recipient still has none. The passwords are forgotten once it went.
+     */
     fun send(message: Message) {
-        val request = TutaOutgoing.from(message).toSendRequest()
+        val outgoing = TutaOutgoing.from(message)
+        val messageId = message.messageId
+        val request = if (outgoing.confidential) {
+            outgoing.toSendRequest(confidentialPasswords(outgoing, messageId?.let(passwords::get).orEmpty()))
+        } else {
+            outgoing.toSendRequest()
+        }
         connection.call { send(it, request) }
+        messageId?.let(passwords::remove)
+    }
+
+    private fun confidentialPasswords(outgoing: TutaOutgoing, typed: Map<String, String>): Map<String, String> {
+        val addresses = outgoing.recipientAddresses
+        val missing = addresses.filter { address -> typed.keys.none { it.equals(address, ignoreCase = true) } }
+        val stored = missing.chunked(CONTACT_LOOKUP_SIZE).flatMap { batch ->
+            connection.call { contactPasswords(it, batch) }
+        }
+        return sendPasswords(addresses, typed, stored)
     }
 
     /** Saves [message] as a new draft when [folderServerId] is Drafts; returns its id, or null elsewhere. */
@@ -123,6 +145,9 @@ internal class TutaCommands(
     private companion object {
         /** The most ids one Tuta request takes. */
         const val BATCH_SIZE = 50
+
+        /** The most addresses one `contact_passwords` request takes. */
+        const val CONTACT_LOOKUP_SIZE = 100
         const val MARK_ALL_PAGE_SIZE = 1000
         const val TAG = "TutaCommands"
     }
