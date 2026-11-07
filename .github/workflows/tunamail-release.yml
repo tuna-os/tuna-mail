@@ -119,11 +119,13 @@ jobs:
         run: |
           build_tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
           out=app-tunamail/build/outputs/apk/release
+          find app-tunamail/build/outputs -name '*.apk' -o -name output-metadata.json
           expected=$(printf '%s' "$RELEASE_CERT_SHA256" | tr -d ':' | tr 'A-F' 'a-f')
-          badging=$("$build_tools/aapt2" dump badging "$out/app-tunamail-arm64-v8a-release.apk")
-          version=$(sed -n "s/^package: .* versionName='\([^']*\)'.*/\1/p" <<< "$badging")
+          # AGP lists what it built, one element per ABI split, in output-metadata.json.
+          metadata="$out/output-metadata.json"
+          version=$(jq -r '[.elements[].versionName] | unique | if length == 1 then .[0] else "" end' "$metadata")
           if [ -z "$version" ]; then
-            echo "::error::Could not read versionName from the APK."
+            echo "::error::Could not read one versionName from $metadata."
             exit 1
           fi
           if [ -n "$TAG" ] && [ "$TAG" != "tunamail-v$version" ]; then
@@ -132,7 +134,13 @@ jobs:
           fi
           mkdir -p "$RUNNER_TEMP/dist"
           for abi in arm64-v8a x86_64; do
-            apk="$out/app-tunamail-$abi-release.apk"
+            apk="$out/$(jq -r --arg abi "$abi" \
+              '.elements[] | select(any(.filters[]; .filterType == "ABI" and .value == $abi)) | .outputFile' \
+              "$metadata")"
+            if [ ! -f "$apk" ]; then
+              echo "::error::No $abi APK in $metadata."
+              exit 1
+            fi
             certs=$("$build_tools/apksigner" verify --print-certs "$apk")
             signers=$(grep -c '^Signer #[0-9]* certificate DN:' <<< "$certs" || true)
             actual=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' <<< "$certs")
