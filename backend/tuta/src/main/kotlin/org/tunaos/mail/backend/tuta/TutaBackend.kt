@@ -7,9 +7,9 @@ import com.fsck.k9.backend.api.BackendStorage
 import com.fsck.k9.backend.api.SyncConfig
 import com.fsck.k9.backend.api.SyncListener
 import com.fsck.k9.mail.BodyFactory
+import com.fsck.k9.mail.FolderType
 import com.fsck.k9.mail.Message
 import com.fsck.k9.mail.Part
-import com.fsck.k9.mail.FolderType
 import com.fsck.k9.mail.folders.FolderServerId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
