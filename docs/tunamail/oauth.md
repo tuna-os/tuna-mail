@@ -4,10 +4,10 @@ OAuth clients are registered to one app: a package name plus the certificate it 
 Tuna Mail cannot use the client ids K-9 Mail and Thunderbird ship, so it ships none of its own
 in source. The ids are build settings, empty by default:
 
-| Setting (Gradle property) | Environment variable | What it is |
-|---|---|---|
-| `tunamail.oauth.google.clientId` | `TUNAMAIL_GOOGLE_CLIENT_ID` | Client id of a Google OAuth client of type **Android** |
-| `tunamail.oauth.microsoft.clientId` | `TUNAMAIL_MICROSOFT_CLIENT_ID` | Application (client) id of a Microsoft Entra app registration |
+|        Setting (Gradle property)         |        Environment variable         |                                                What it is                                                |
+|------------------------------------------|-------------------------------------|----------------------------------------------------------------------------------------------------------|
+| `tunamail.oauth.google.clientId`         | `TUNAMAIL_GOOGLE_CLIENT_ID`         | Client id of a Google OAuth client of type **Android**                                                   |
+| `tunamail.oauth.microsoft.clientId`      | `TUNAMAIL_MICROSOFT_CLIENT_ID`      | Application (client) id of a Microsoft Entra app registration                                            |
 | `tunamail.oauth.microsoft.signatureHash` | `TUNAMAIL_MICROSOFT_SIGNATURE_HASH` | Base64 SHA-1 of the signing certificate, exactly as Entra shows it (e.g. `Dx8yUsuhyU3dYYba1aA16Wxu5eM=`) |
 
 `app-tunamail/build.gradle.kts` reads them into `BuildConfig`, and
@@ -26,10 +26,10 @@ secrets, but keep them out of the repository so forks of the fork register their
 
 Each build type is its own app to Google and Microsoft:
 
-| Build | Package name | Signed with |
-|---|---|---|
-| `debug` | `org.tunaos.mail.debug` | the debug keystore of the machine that builds it |
-| `release` | `org.tunaos.mail` | the release key (`tunamail.signing.*` properties) |
+|   Build   |      Package name       |                    Signed with                    |
+|-----------|-------------------------|---------------------------------------------------|
+| `debug`   | `org.tunaos.mail.debug` | the debug keystore of the machine that builds it  |
+| `release` | `org.tunaos.mail`       | the release key (`tunamail.signing.*` properties) |
 
 The package name comes from `app-tunamail/brand.properties` (`applicationId`, plus `.debug` for
 debug builds). Renaming the app means new registrations.

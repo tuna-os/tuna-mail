@@ -6,10 +6,10 @@ on top of shared plumbing.
 
 ## Libraries
 
-| Library | Version | Licence | Source |
-|---|---|---|---|
-| `org.tunaos.tuta:tuta-sdk-android` | 0.2.1 | GPL-3.0-or-later | https://github.com/tuna-os/tuta-unofficial-sdk/releases/tag/v0.2.1 |
-| `org.tunaos.proton:proton-sdk-android` | 0.1.1 | GPL-3.0-or-later | https://github.com/tuna-os/proton-unofficial-sdk/releases/tag/v0.1.1 |
+|                Library                 | Version |     Licence      |                                Source                                |
+|----------------------------------------|---------|------------------|----------------------------------------------------------------------|
+| `org.tunaos.tuta:tuta-sdk-android`     | 0.2.1   | GPL-3.0-or-later | https://github.com/tuna-os/tuta-unofficial-sdk/releases/tag/v0.2.1   |
+| `org.tunaos.proton:proton-sdk-android` | 0.1.1   | GPL-3.0-or-later | https://github.com/tuna-os/proton-unofficial-sdk/releases/tag/v0.1.1 |
 
 They are not committed. `tools/tunamail/tunamail.settings.gradle.kts` (applied from `settings.gradle.kts`)
 downloads each release's `-maven.zip` on the first build, checks its pinned SHA-256, unzips it into
