@@ -14,8 +14,10 @@ import java.util.zip.ZipInputStream
 
 include(
     ":app-tunamail",
+    ":backend:proton",
     ":backend:tunasession",
     ":feature:tunamail:provider",
+    ":feature:tunamail:proton",
 )
 
 class TunaSdk(val name: String, val url: String, val sha256: String)

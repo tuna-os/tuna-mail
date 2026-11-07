@@ -1,6 +1,5 @@
 plugins {
     id(ThunderbirdPlugins.Library.androidCompose)
-    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -12,13 +11,14 @@ dependencies {
     api(projects.backend.proton)
     api(projects.feature.tunamail.provider)
 
-    implementation(projects.backend.tunasession)
     implementation(projects.feature.account.common)
     implementation(projects.legacy.logging)
-    implementation(projects.mail.common)
 
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.webkit)
     implementation(libs.kotlinx.serialization.json)
+
+    testImplementation(projects.feature.account.api)
 }
 
 codeCoverage {

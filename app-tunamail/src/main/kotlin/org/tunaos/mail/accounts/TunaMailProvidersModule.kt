@@ -1,6 +1,7 @@
 package org.tunaos.mail.accounts
 
 import org.koin.dsl.module
+import org.tunaos.mail.feature.proton.featureTunaMailProtonModule
 import org.tunaos.mail.provider.tunaMailProviderModule
 
 /**
@@ -9,4 +10,5 @@ import org.tunaos.mail.provider.tunaMailProviderModule
  */
 val tunaMailProvidersModule = module {
     includes(tunaMailProviderModule)
+    includes(featureTunaMailProtonModule)
 }
