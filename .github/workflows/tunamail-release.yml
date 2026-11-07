@@ -144,9 +144,9 @@ jobs:
               exit 1
             fi
             certs=$("$build_tools/apksigner" verify --print-certs "$apk")
-            # v2 prints "Signer #1 certificate …", v3/v3.1 "Signer (minSdkVersion=…) certificate …".
-            signers=$(grep -c '^Signer .* certificate DN:' <<< "$certs" || true)
-            digests=$(sed -n 's/^Signer .* certificate SHA-256 digest: //p' <<< "$certs" | sort -u)
+            # apksigner outputs vary by version: "Signer #1 certificate DN:", "V2 Signer: certificate DN:", etc.
+            signers=$(grep -c -i 'certificate DN:' <<< "$certs" || true)
+            digests=$(grep -i 'certificate SHA-256 digest:' <<< "$certs" | sed -E 's/.*: *//' | tr -d ' :' | tr 'A-F' 'a-f' | sort -u)
             if [ "$signers" -lt 1 ] || [ "$digests" != "$expected" ]; then
               echo "$certs" >&2
               echo "::error::$apk is not signed with the Tuna Mail release key (got $signers signer line(s), SHA-256 ${digests:-none})."
