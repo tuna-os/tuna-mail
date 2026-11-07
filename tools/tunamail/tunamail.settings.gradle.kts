@@ -15,7 +15,9 @@ import java.util.zip.ZipInputStream
 include(
     ":app-tunamail",
     ":backend:tunasession",
+    ":backend:tuta",
     ":feature:tunamail:provider",
+    ":feature:tunamail:tuta",
 )
 
 class TunaSdk(val name: String, val url: String, val sha256: String)
