@@ -47,6 +47,7 @@ class ProtonBackend(
 ) : Backend, RemoteFolderCreator {
     private val folderList = ProtonFolderList(backendStorage, api)
     private val messageSync = ProtonMessageSync(backendStorage, api)
+    private val serverSearch = ProtonSearch(api)
 
     override val supportsFlags = true
     override val supportsExpunge = false
@@ -174,9 +175,7 @@ class ProtonBackend(
         requiredFlags: Set<Flag>?,
         forbiddenFlags: Set<Flag>?,
         performFullTextSearch: Boolean,
-    ): List<String> {
-        throw MessagingException("Server search is not available for Proton accounts", true)
-    }
+    ): List<String> = serverSearch.search(folderServerId, query, requiredFlags, forbiddenFlags)
 
     override fun fetchPart(folderServerId: String, messageServerId: String, part: Part, bodyFactory: BodyFactory) {
         throw UnsupportedOperationException("Proton messages are always downloaded complete")

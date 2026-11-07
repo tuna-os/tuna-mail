@@ -10,7 +10,7 @@ dependencies {
     api(projects.backend.api)
     api(libs.tb.mobile.components.core.outcome)
     // Fetched into third_party/maven by tools/tunamail/tunamail.settings.gradle.kts (GPL-3.0-or-later).
-    api("org.tunaos.tuta:tuta-sdk-android:0.2.1")
+    api("org.tunaos.tuta:tuta-sdk-android:0.3.0")
     implementation(libs.kotlinx.serialization.json)
 
     implementation(projects.core.common)

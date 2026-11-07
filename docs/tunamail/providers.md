@@ -8,8 +8,8 @@ on top of shared plumbing.
 
 |                Library                 | Version |     Licence      |                                Source                                |
 |----------------------------------------|---------|------------------|----------------------------------------------------------------------|
-| `org.tunaos.tuta:tuta-sdk-android`     | 0.2.1   | GPL-3.0-or-later | https://github.com/tuna-os/tuta-unofficial-sdk/releases/tag/v0.2.1   |
-| `org.tunaos.proton:proton-sdk-android` | 0.1.1   | GPL-3.0-or-later | https://github.com/tuna-os/proton-unofficial-sdk/releases/tag/v0.1.1 |
+| `org.tunaos.tuta:tuta-sdk-android`     | 0.3.0   | GPL-3.0-or-later | https://github.com/tuna-os/tuta-unofficial-sdk/releases/tag/v0.3.0   |
+| `org.tunaos.proton:proton-sdk-android` | 0.1.2   | GPL-3.0-or-later | https://github.com/tuna-os/proton-unofficial-sdk/releases/tag/v0.1.2 |
 
 They are not committed. `tools/tunamail/tunamail.settings.gradle.kts` (applied from `settings.gradle.kts`)
 downloads each release's `-maven.zip` on the first build, checks its pinned SHA-256, unzips it into
@@ -103,8 +103,9 @@ custom domains whose MX record names `mail.tutanota.de`.
   and rebuilding the mail with the SDK's import is refused below the Legend and Unlimited plans, which a
   backend's static capability cannot express, and would make a second, separate mail without the
   original's labels that counts twice against the account's storage.
-- **Limits** — no server search (the SDK has none); renaming and deleting folders is in the SDK but the app
-  has no screen for it, for any account type.
+- **Server search** — see "Server search" below.
+- **Limits** — renaming and deleting folders is in the SDK but the app has no screen for it, for any account
+  type.
 
 ## Proton
 
@@ -149,8 +150,9 @@ domains whose MX record names `mail.protonmail.ch` or `mailsec.protonmail.ch`.
   another watched folder is pushed with the next poll at least 5 minutes (15 with the screen off) after the
   last such push, since each push costs a folder sync; an account without the Inbox watched polls at that
   pace. Network failures retry after a growing delay; a refused session is reported as a sign-in problem.
-- **Limits** — no server search (the SDK has none); renaming and deleting folders is in the SDK but the app
-  has no screen for it, for any account type.
+- **Server search** — see "Server search" below.
+- **Limits** — renaming and deleting folders is in the SDK but the app has no screen for it, for any account
+  type.
 
 ## Tests
 

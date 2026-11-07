@@ -318,6 +318,50 @@ class ProtonBackendTest {
     }
 
     @Test
+    fun `search asks Proton for the keyword in the folder and pages through the results, newest first`() {
+        repeat(150) { api.addMessage("old-$it", INBOX, dateMs = 1_000L + it) }
+        api.messages["new"] = FakeProtonApi.header("new", listOf(INBOX), dateMs = 9_000)
+        api.addMessage("elsewhere", ARCHIVE, dateMs = 10_000)
+
+        val ids = backend.search(INBOX, " subject ", null, null, performFullTextSearch = true)
+
+        assertThat(ids.size).isEqualTo(151)
+        assertThat(ids.first()).isEqualTo("new")
+        assertThat(ids).doesNotContain("elsewhere")
+        assertThat(api.searchCalls.map { it.second }).containsExactly(null, "100")
+        assertThat(api.searchCalls.first().first.keyword).isEqualTo("subject")
+        assertThat(api.searchCalls.first().first.folder).isEqualTo(INBOX)
+    }
+
+    @Test
+    fun `search maps read and flagged requirements to Proton's unread and starred`() {
+        api.addMessage("unread-starred", INBOX, dateMs = 3_000, isUnread = true, isStarred = true)
+        api.addMessage("read-starred", INBOX, dateMs = 2_000, isUnread = false, isStarred = true)
+        api.addMessage("unread", INBOX, dateMs = 1_000, isUnread = true)
+
+        val ids = backend.search(INBOX, "subject", setOf(Flag.FLAGGED), setOf(Flag.SEEN), false)
+
+        assertThat(ids).containsExactly("unread-starred")
+        val query = api.searchCalls.single().first
+        assertThat(query.isUnread).isEqualTo(true)
+        assertThat(query.isStarred).isEqualTo(true)
+    }
+
+    @Test
+    fun `search with nothing to look for asks nothing`() {
+        assertThat(backend.search(INBOX, "  ", null, null, false)).isEmpty()
+        assertThat(api.searchCalls).isEmpty()
+    }
+
+    @Test
+    fun `a refused session fails the search as an authentication failure`() {
+        api.failure = protonError("session_revoked")
+
+        assertFailure { backend.search(INBOX, "subject", null, null, false) }
+            .isInstanceOf<AuthenticationFailedException>()
+    }
+
+    @Test
     fun `move keeps the message ids`() {
         val ids = listOf("m1", "m2")
 

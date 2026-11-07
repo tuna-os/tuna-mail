@@ -10,6 +10,7 @@ import com.fsck.k9.mail.BodyFactory
 import com.fsck.k9.mail.FolderType
 import com.fsck.k9.mail.Message
 import com.fsck.k9.mail.Part
+
 import com.fsck.k9.mail.folders.FolderServerId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -40,6 +41,7 @@ class TutaBackend(
     private val labels = TutaLabels(backendStorage, connection, notices)
     private val tutaSync = TutaSync(backendStorage, connection, folders, labels)
     private val commands = TutaCommands(connection, folders, labels, passwords)
+    private val serverSearch = TutaSearch(connection, labels)
 
     override val supportsFlags = true
     override val supportsExpunge = false
@@ -120,14 +122,14 @@ class TutaBackend(
         messageServerIds: List<String>,
     ): Map<String, String>? = throw MessagingException("Tuta cannot copy mail", true)
 
-    /** Tuta's search runs on the device in its own apps; the SDK offers none, so there is no server search. */
+    /** Tuta's bounded server-side scan ([TutaSearch]); it always looks in the body too. */
     override fun search(
         folderServerId: String,
         query: String?,
         requiredFlags: Set<Flag>?,
         forbiddenFlags: Set<Flag>?,
         performFullTextSearch: Boolean,
-    ): List<String> = emptyList()
+    ): List<String> = serverSearch.search(folderServerId, query, requiredFlags, forbiddenFlags)
 
     /** Messages are downloaded whole ([downloadCompleteMessage]), so there are no parts to fetch on their own. */
     override fun fetchPart(folderServerId: String, messageServerId: String, part: Part, bodyFactory: BodyFactory) {

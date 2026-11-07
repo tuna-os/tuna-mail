@@ -345,6 +345,50 @@ class TutaBackendTest {
     }
 
     @Test
+    fun `search follows Tuta's scan through the folder and returns the matches newest first`() {
+        api.mails[INBOX] = MutableList(1200) { index ->
+            val id = if (index in setOf(0, 700, 1100)) "needle-$index" else "m$index"
+            listed(mail(id))
+        }
+
+        val ids = backend.search(INBOX, " Needle ", null, null, performFullTextSearch = false)
+
+        assertThat(ids).containsExactly("needle-0", "needle-700", "needle-1100")
+        assertThat(api.searchCalls.map { it.second }).containsExactly(null, "500", "1000")
+        assertThat(api.searchCalls.first().first.keyword).isEqualTo("Needle")
+    }
+
+    @Test
+    fun `search narrows unread on the server and checks the flagged label on the results`() {
+        api.labels += Label("label-flag", "Flagged", "#f5a623")
+        api.mails[INBOX] = mutableListOf(
+            listed(mail("flagged-unread"), labels = listOf("label-flag")),
+            listed(mail("unread")),
+            listed(mail("flagged-read", isUnread = false), labels = listOf("label-flag")),
+        )
+
+        val ids = backend.search(INBOX, "subject", setOf(Flag.FLAGGED), setOf(Flag.SEEN), false)
+
+        assertThat(ids).containsExactly("flagged-unread")
+        assertThat(api.searchCalls.single().first.isUnread).isEqualTo(true)
+    }
+
+    @Test
+    fun `search with nothing to look for asks nothing`() {
+        assertThat(backend.search(INBOX, " ", null, null, false)).isEmpty()
+        assertThat(api.searchCalls).isEmpty()
+    }
+
+    @Test
+    fun `a refused session fails the search as an authentication failure`() {
+        api.failures += "session_revoked"
+
+        assertFailure { backend.search(INBOX, "subject", null, null, false) }
+            .isInstanceOf<AuthenticationFailedException>()
+        assertThat(sessions.isInvalidated).isTrue()
+    }
+
+    @Test
     fun `moveMessagesAndMarkAsRead moves and marks the moved mail read`() {
         val ids = backend.moveMessagesAndMarkAsRead(INBOX, WORK, listOf("m1", "m2"))
 
