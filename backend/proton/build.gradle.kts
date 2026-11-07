@@ -9,7 +9,7 @@ android {
 dependencies {
     api(projects.backend.api)
     // Fetched into third_party/maven by tools/tunamail/tunamail.settings.gradle.kts, which pins its digest.
-    api("org.tunaos.proton:proton-sdk-android:0.1.0")
+    api("org.tunaos.proton:proton-sdk-android:0.1.1")
 
     implementation(projects.core.common)
     implementation(projects.feature.mail.folder.api)
