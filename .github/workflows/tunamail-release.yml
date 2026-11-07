@@ -1,0 +1,204 @@
+name: Tuna Mail - Release
+
+# Builds Tuna Mail (:app-tunamail) for release, signs it with the Tuna Mail release key and,
+# for a tunamail-v<versionName> tag, publishes it as a GitHub release: one APK per ABI
+# (arm64-v8a, x86_64) and SHA256SUMS. See docs/tunamail/MAINTAINING.md ("Releasing") and
+# docs/tunamail/distribution.md.
+#
+# Pushing a tunamail-v* tag publishes. Running the workflow by hand builds the given ref; a
+# tunamail-v* tag publishes as a push would (to redo a failed release), anything else is a
+# dry run whose APKs are only uploaded as workflow artifacts.
+#
+# The key comes from two Actions secrets: TUNAMAIL_KEYSTORE_BASE64 (the PKCS12 keystore,
+# base64) and TUNAMAIL_KEYSTORE_PASSWORD (its store and key password); the alias is tunamail.
+# The keystore is written under $RUNNER_TEMP for the build and deleted afterwards, and the
+# passwords reach Gradle through the environment, never the command line. A build signed with
+# any other certificate than RELEASE_CERT_SHA256 below fails before anything is published.
+#
+# The OAuth client ids (docs/tunamail/oauth.md) are optional: set TUNAMAIL_GOOGLE_CLIENT_ID and
+# TUNAMAIL_MICROSOFT_CLIENT_ID as Actions variables or secrets to build them in.
+
+on:
+  push:
+    tags:
+      - 'tunamail-v*'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, commit or tag to build. A tunamail-v* tag publishes its release; anything else is a dry run.'
+        required: true
+        default: main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tunamail-release-${{ inputs.ref || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, sign and publish Tuna Mail
+    # Only on the fork; upstream has no Tuna Mail and no Tuna Mail key.
+    if: github.repository == 'tuna-os/thunderbird-android'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      REF: ${{ inputs.ref || github.ref }}
+      # The release key's certificate (docs/tunamail/oauth.md, "Release key").
+      RELEASE_CERT_SHA256: '41:47:22:60:29:05:33:43:2A:BF:DB:7D:80:11:FE:A8:25:67:9D:74:FB:36:03:6D:32:C6:31:D7:5B:F1:E8:AD'
+
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.REF }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Decide whether to publish
+        id: target
+        run: |
+          case "$REF" in
+            refs/tags/tunamail-v*) tag=${REF#refs/tags/} ;;
+            tunamail-v*) tag=$REF ;;
+            *) tag= ;;
+          esac
+          # A dispatch naming a branch that happens to look like a tag stays a dry run.
+          if [ -n "$tag" ] && ! gh api "repos/$GH_REPO/git/ref/tags/$tag" --silent 2>/dev/null; then
+            tag=
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [ -n "$tag" ]; then
+            echo "Publishing $tag."
+          else
+            echo "Dry run of $REF: the APKs are uploaded as workflow artifacts only."
+          fi
+
+      - name: Cleanup disk
+        uses: ./.github/actions/disk-cleanup
+
+      - name: Setup Gradle environment
+        uses: ./.github/actions/setup-gradle
+
+      - name: Write the keystore
+        env:
+          KEYSTORE: ${{ runner.temp }}/tunamail-release.p12
+          KEYSTORE_BASE64: ${{ secrets.TUNAMAIL_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::The TUNAMAIL_KEYSTORE_BASE64 secret is not set."
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
+
+      - name: Build the release APKs
+        env:
+          # Read by app-tunamail/build.gradle.kts as the tunamail.signing.* Gradle properties.
+          ORG_GRADLE_PROJECT_tunamail.signing.storeFile: ${{ runner.temp }}/tunamail-release.p12
+          ORG_GRADLE_PROJECT_tunamail.signing.storePassword: ${{ secrets.TUNAMAIL_KEYSTORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_tunamail.signing.keyAlias: tunamail
+          ORG_GRADLE_PROJECT_tunamail.signing.keyPassword: ${{ secrets.TUNAMAIL_KEYSTORE_PASSWORD }}
+          TUNAMAIL_GOOGLE_CLIENT_ID: ${{ vars.TUNAMAIL_GOOGLE_CLIENT_ID || secrets.TUNAMAIL_GOOGLE_CLIENT_ID }}
+          TUNAMAIL_MICROSOFT_CLIENT_ID: ${{ vars.TUNAMAIL_MICROSOFT_CLIENT_ID || secrets.TUNAMAIL_MICROSOFT_CLIENT_ID }}
+          # The release key's signature hash, which Entra needs next to the Microsoft client id.
+          TUNAMAIL_MICROSOFT_SIGNATURE_HASH: 'yStrGSVKzaWo9aGp8QYNhwWEUC8='
+        # No configuration cache: it would store the signing passwords on disk.
+        run: ./gradlew --no-configuration-cache :app-tunamail:assembleRelease
+
+      - name: Check the signatures and collect the APKs
+        id: apks
+        env:
+          TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          build_tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
+          out=app-tunamail/build/outputs/apk/release
+          expected=$(printf '%s' "$RELEASE_CERT_SHA256" | tr -d ':' | tr 'A-F' 'a-f')
+          badging=$("$build_tools/aapt2" dump badging "$out/app-tunamail-arm64-v8a-release.apk")
+          version=$(sed -n "s/^package: .* versionName='\([^']*\)'.*/\1/p" <<< "$badging")
+          if [ -z "$version" ]; then
+            echo "::error::Could not read versionName from the APK."
+            exit 1
+          fi
+          if [ -n "$TAG" ] && [ "$TAG" != "tunamail-v$version" ]; then
+            echo "::error::Tag $TAG does not match the app's versionName $version; tag tunamail-v$version instead."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/dist"
+          for abi in arm64-v8a x86_64; do
+            apk="$out/app-tunamail-$abi-release.apk"
+            certs=$("$build_tools/apksigner" verify --print-certs "$apk")
+            signers=$(grep -c '^Signer #[0-9]* certificate DN:' <<< "$certs" || true)
+            actual=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' <<< "$certs")
+            if [ "$signers" != 1 ] || [ "$actual" != "$expected" ]; then
+              echo "::error::$apk is not signed with the Tuna Mail release key (got $signers signer(s), SHA-256 ${actual:-none})."
+              exit 1
+            fi
+            # Each APK carries the native libraries of its own ABI only.
+            abis=$(unzip -Z1 "$apk" 'lib/*' | cut -d / -f 2 | sort -u)
+            if [ "$abis" != "$abi" ]; then
+              echo "::error::$apk has native libraries for: $(tr '\n' ' ' <<< "$abis")"
+              exit 1
+            fi
+            cp "$apk" "$RUNNER_TEMP/dist/tuna-mail-$version-$abi.apk"
+          done
+          (cd "$RUNNER_TEMP/dist" && sha256sum tuna-mail-*.apk > SHA256SUMS)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Tuna Mail $version"
+            echo
+            echo "Signed with the release key (certificate SHA-256 \`$RELEASE_CERT_SHA256\`)."
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/dist/SHA256SUMS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the APKs
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tuna-mail-${{ steps.apks.outputs.version }}
+          path: ${{ runner.temp }}/dist/
+          if-no-files-found: error
+
+      - name: Publish the GitHub release
+        if: steps.target.outputs.tag != ''
+        env:
+          TAG: ${{ steps.target.outputs.tag }}
+          VERSION: ${{ steps.apks.outputs.version }}
+        run: |
+          source="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/tree/$TAG"
+          # The prebuilt Tuta and Proton SDKs the build links, as pinned in the settings plugin.
+          sdks=$(grep -o 'https://github.com/tuna-os/[A-Za-z0-9_.-]*/releases/download/v[A-Za-z0-9_.-]*' \
+            tools/tunamail/tunamail.settings.gradle.kts | sed 's|/releases/download/|/tree/|')
+          {
+            echo "Tuna Mail $VERSION for Android."
+            echo
+            echo "- \`tuna-mail-$VERSION-arm64-v8a.apk\`: phones and tablets"
+            echo "- \`tuna-mail-$VERSION-x86_64.apk\`: x86_64 devices and emulators"
+            echo
+            echo "Both are signed with the Tuna Mail release key, certificate SHA-256"
+            echo "\`$RELEASE_CERT_SHA256\`"
+            echo "(check with \`apksigner verify --print-certs\`), and listed in \`SHA256SUMS\`."
+            echo
+            echo "Tuna Mail links the GPL-3.0-or-later Tuta and Proton SDKs, so these builds are"
+            echo "distributed under GPL-3.0-or-later. Source: $source (also the source archives"
+            echo "below), and the SDKs it was built with:"
+            echo
+            while read -r sdk; do echo "- $sdk"; done <<< "$sdks"
+          } > "$RUNNER_TEMP/notes.md"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$RUNNER_TEMP"/dist/* --clobber
+            gh release edit "$TAG" --title "Tuna Mail $VERSION" --notes-file "$RUNNER_TEMP/notes.md"
+          else
+            gh release create "$TAG" "$RUNNER_TEMP"/dist/* --verify-tag \
+              --title "Tuna Mail $VERSION" --notes-file "$RUNNER_TEMP/notes.md"
+          fi
+          echo "Published $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove the keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/tunamail-release.p12"

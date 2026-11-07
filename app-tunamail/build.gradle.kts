@@ -52,10 +52,17 @@ android {
         buildConfigField("String", "OAUTH_GOOGLE_CLIENT_ID", "\"$googleClientId\"")
         buildConfigField("String", "OAUTH_MICROSOFT_CLIENT_ID", "\"$microsoftClientId\"")
         buildConfigField("String", "OAUTH_MICROSOFT_SIGNATURE_HASH", "\"$microsoftSignatureHash\"")
+    }
 
-        ndk {
-            // The native Tuta and Proton libraries are built for these two ABIs only.
-            abiFilters += listOf("arm64-v8a", "x86_64")
+    splits {
+        abi {
+            // The native Tuta and Proton libraries are built for these two ABIs only. One APK per ABI, each
+            // with the same versionCode: releases are installed from GitHub (docs/tunamail/distribution.md),
+            // which never has to pick between them by versionCode. AGP refuses ndk.abiFilters next to this.
+            isEnable = true
+            reset()
+            include("arm64-v8a", "x86_64")
+            isUniversalApk = false
         }
     }
 

@@ -145,11 +145,48 @@ cargo-ndk or gomobile job on the host must take the same lock), refuses to start
 3 GiB is available, limits the container to 4500 MiB, caps Gradle with
 [`tools/build-env/gradle.properties`](../../tools/build-env/gradle.properties) (2 GiB heap, Kotlin
 compiled in-process, 3 workers), runs cargo with 6 jobs, and stops the Gradle daemon afterwards.
-The debug APK lands in `app-tunamail/build/outputs/apk/debug/`.
+Every build makes one APK per ABI, `app-tunamail-arm64-v8a-<buildType>.apk` (phones) and
+`app-tunamail-x86_64-<buildType>.apk` (emulators), in `app-tunamail/build/outputs/apk/<buildType>/`;
+the native Tuta and Proton libraries exist for these two ABIs only.
 
-Release builds are signed when the `tunamail.signing.storeFile`, `tunamail.signing.storePassword`,
-`tunamail.signing.keyAlias` and `tunamail.signing.keyPassword` Gradle properties are set, and
-unsigned otherwise.
+Release builds are minified with R8 (`-Pminify=false` turns it off). The keep rules for the Tuta SDK
+(JNA and its uniffi bindings) and the Proton SDK (gomobile) ship inside their AARs as consumer rules,
+so `app-tunamail/proguard-rules.pro` needs none of its own. They are signed when the
+`tunamail.signing.storeFile`, `tunamail.signing.storePassword`, `tunamail.signing.keyAlias` and
+`tunamail.signing.keyPassword` Gradle properties are set, and unsigned otherwise.
+
+## Releasing
+
+Releases are built, signed and published by
+[`.github/workflows/tunamail-release.yml`](../../.github/workflows/tunamail-release.yml), never by
+hand: the release key exists only offline and in the repository's Actions secrets.
+
+1. Set `versionName` (and raise `versionCode`) in `app-tunamail/build.gradle.kts` on `main`.
+2. Dry run: **Actions → Tuna Mail - Release → Run workflow** with `ref` set to `main` (or
+   `gh workflow run tunamail-release.yml -f ref=main`). It builds, signs and checks the APKs and
+   uploads them as a workflow artifact, and publishes nothing.
+3. Tag the same commit `tunamail-v<versionName>` and push the tag
+   (`git tag tunamail-v0.1.0 && git push origin tunamail-v0.1.0`). The workflow builds the tag,
+   refuses a tag that does not match the APK's `versionName`, and creates the GitHub release
+   "Tuna Mail <versionName>" with `tuna-mail-<versionName>-arm64-v8a.apk`,
+   `tuna-mail-<versionName>-x86_64.apk` and `SHA256SUMS`. The notes link the tag's source tree and
+   the Tuta and Proton SDK sources it was built with, as the GPL requires. To redo a failed release,
+   run the workflow by hand with the tag as `ref`; it replaces the assets.
+
+Before anything is published, the workflow checks with `apksigner` that each APK has exactly one
+signer whose certificate SHA-256 is the release key's (listed in [oauth.md](oauth.md#release-key)),
+and that it carries the native libraries of its own ABI only.
+
+The workflow needs these Actions secrets:
+
+| Secret | What it is |
+|---|---|
+| `TUNAMAIL_KEYSTORE_BASE64` | The release keystore (PKCS12, alias `tunamail`), base64 |
+| `TUNAMAIL_KEYSTORE_PASSWORD` | Its store password, which is also the key password |
+
+and, optionally, the `TUNAMAIL_GOOGLE_CLIENT_ID` and `TUNAMAIL_MICROSOFT_CLIENT_ID` variables or
+secrets ([oauth.md](oauth.md)). Releases are installed from GitHub, directly or through Obtainium;
+[distribution.md](distribution.md) has the reasons, and what F-Droid would take.
 
 ## Licence
 
