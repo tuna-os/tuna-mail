@@ -80,6 +80,63 @@ class TutaMimeTest {
     }
 
     @Test
+    fun `a line break in the subject does not start another header`() {
+        val header = TutaBackendTest.mail("m1").copy(subject = "Hi\r\nX-Injected: yes")
+
+        val message = TutaMime.fullMessage(TutaBackendTest.message(header, html = "<p>Hallo</p>"))
+
+        assertThat(message.subject).isEqualTo("Hi X-Injected: yes")
+        assertThat(message.getHeader("X-Injected").toList()).isEmpty()
+    }
+
+    @Test
+    fun `a line break in the subject does not end the header block`() {
+        val header = TutaBackendTest.mail("m1").copy(subject = "Hi\r\n\r\nNot the body")
+
+        val message = TutaMime.fullMessage(TutaBackendTest.message(header, html = "<p>Hallo</p>"))
+
+        assertThat(message.mimeType).isEqualTo("text/html")
+        assertThat(MessageExtractor.getTextFromPart(message)).isEqualTo("<p>Hallo</p>")
+    }
+
+    @Test
+    fun `a line break in an address does not start another header`() {
+        val message = TutaMime.fullMessage(
+            TutaBackendTest.message(TutaBackendTest.mail("m1")).copy(
+                replyTo = listOf(Address(name = "", address = "carol@example.com\r\nX-Injected: yes")),
+            ),
+        )
+
+        assertThat(message.getHeader("X-Injected").toList()).isEmpty()
+        assertThat(message.subject).isEqualTo("Subject m1")
+    }
+
+    @Test
+    fun `a line break in an attachment's type or content id does not start another header`() {
+        val message = TutaMime.fullMessage(
+            TutaBackendTest.message(
+                TutaBackendTest.mail("m1", hasAttachments = true),
+                html = "<img src=\"cid:logo\">",
+                attachments = listOf(
+                    Attachment(
+                        name = "logo.png",
+                        mimeType = "image/png",
+                        cid = "logo\r\nX-Injected: yes",
+                        data = "iVBORw==",
+                    ),
+                    Attachment(name = "a.pdf", mimeType = "application/pdf\r\nX-Injected: yes", data = "JVBERi0="),
+                ),
+            ),
+        )
+
+        val mixed = message.body as Multipart
+        val related = mixed.bodyParts[0].body as Multipart
+        assertThat(related.bodyParts[1].getHeader("X-Injected").toList()).isEmpty()
+        assertThat(mixed.bodyParts[1].getHeader("X-Injected").toList()).isEmpty()
+        assertThat(mixed.bodyParts.map { it.mimeType }).containsExactly("multipart/related", "application/octet-stream")
+    }
+
+    @Test
     fun `an envelope has the headers and no body`() {
         val message = TutaMime.envelope(TutaBackendTest.mail("m1", hasAttachments = true))
 
