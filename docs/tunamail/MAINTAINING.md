@@ -85,8 +85,10 @@ and no Tuna Mail app. If it would, it goes upstream.
   `GeneratedFeatureFlagKey`; drop the pin then.
 - **OAuth:** Google and Microsoft only, with client ids from the build ([oauth.md](oauth.md));
   a provider with no id is left out.
-- **Native code:** `ndkVersion` and `abiFilters` (`arm64-v8a`, `x86_64`) are set in
-  `app-tunamail/build.gradle.kts` for the Tuta (Rust) and Proton (Go) libraries.
+- **Native code:** `ndkVersion` and ABI splits (`splits.abi`: `arm64-v8a`, `x86_64`, one APK per
+  ABI, see "Building") are set in `app-tunamail/build.gradle.kts` for the Tuta (Rust) and Proton
+  (Go) libraries. AGP refuses `ndk.abiFilters` next to ABI splits, so the ABI list lives only in
+  `splits.abi`.
 
 ## Keeping up with upstream
 
