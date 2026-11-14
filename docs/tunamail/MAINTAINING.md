@@ -101,9 +101,9 @@ and no Tuna Mail app. If it would, it goes upstream.
 - **On a conflict or failure** it pushes nothing, and opens or updates one issue labelled
   `upstream-sync` listing the files involved.
 - **Set up once:** GitHub disables Actions on a new fork; enable them in the repository's Actions
-  tab. Add an `UPSTREAM_SYNC_TOKEN` secret (a fine-grained token with contents and workflows
-  write access on this repository): upstream edits `.github/workflows` often, and `GITHUB_TOKEN`
-  may not push such a merge. Enabling Actions also enables upstream's own workflows on this
+  tab. Add an `UPSTREAM_SYNC_SSH_KEY` secret (the private key of a deploy key with write access
+  on this repository): upstream edits `.github/workflows` often, and `GITHUB_TOKEN` may not push
+  such a merge. Enabling Actions also enables upstream's own workflows on this
   fork. Some of them check the repository name and skip themselves here; review the Actions tab
   and disable the ones the fork has no use for (issue triage, translations, releases).
 - **Resolving a sync by hand:**
