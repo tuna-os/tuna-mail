@@ -2,8 +2,6 @@ package org.tunaos.mail.backend.session
 
 import java.io.File
 import java.io.IOException
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
 import java.security.GeneralSecurityException
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
@@ -43,16 +41,10 @@ class EncryptedFileSessionStore(
         directory.mkdirs()
         val temporary = File(directory, "${file.name}.tmp")
         temporary.writeBytes(seal(accountUuid, session))
-        try {
-            Files.move(
-                temporary.toPath(),
-                file.toPath(),
-                StandardCopyOption.ATOMIC_MOVE,
-                StandardCopyOption.REPLACE_EXISTING,
-            )
-        } catch (e: IOException) {
+        // A rename within one directory replaces the old file in one step, and needs no API above the app's minimum.
+        if (!temporary.renameTo(file)) {
             temporary.delete()
-            throw e
+            throw IOException("could not replace the session file")
         }
     }
 
