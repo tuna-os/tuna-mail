@@ -9,7 +9,7 @@ on top of shared plumbing.
 |                Library                 | Version |     Licence      |                                Source                                |
 |----------------------------------------|---------|------------------|----------------------------------------------------------------------|
 | `org.tunaos.tuta:tuta-sdk-android`     | 0.3.0   | GPL-3.0-or-later | https://github.com/tuna-os/tuta-unofficial-sdk/releases/tag/v0.3.0   |
-| `org.tunaos.proton:proton-sdk-android` | 0.1.2   | GPL-3.0-or-later | https://github.com/tuna-os/proton-unofficial-sdk/releases/tag/v0.1.2 |
+| `org.tunaos.proton:proton-sdk-android` | 0.1.3   | GPL-3.0-or-later | https://github.com/tuna-os/proton-unofficial-sdk/releases/tag/v0.1.3 |
 
 They are not committed. `tools/tunamail/tunamail.settings.gradle.kts` (applied from `settings.gradle.kts`)
 downloads each release's `-maven.zip` on the first build, checks its pinned SHA-256, unzips it into
