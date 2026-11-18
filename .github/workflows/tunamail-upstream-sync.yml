@@ -11,9 +11,9 @@ name: Tuna Mail - Upstream sync
 # the open one), which the next clean run closes. See docs/tunamail/MAINTAINING.md.
 #
 # GITHUB_TOKEN cannot push a commit that changes .github/workflows, and upstream changes its
-# workflows often. Give the repository an UPSTREAM_SYNC_TOKEN secret (a token with the
-# workflow scope); it is used for the push when present. Without it such merges fail to push
-# and the issue says so.
+# workflows often. Give the repository an UPSTREAM_SYNC_SSH_KEY secret (the private half of a
+# deploy key with write access); checkout and the push then go over SSH with it. Without it
+# such merges fail to push and the issue says so.
 
 on:
   schedule:
@@ -46,7 +46,8 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          token: ${{ secrets.UPSTREAM_SYNC_TOKEN || github.token }}
+          ssh-key: ${{ secrets.UPSTREAM_SYNC_SSH_KEY }}
+          token: ${{ github.token }}
 
       - name: Merge
         id: merge
@@ -122,7 +123,7 @@ jobs:
           elif [ "$BUILD" = failure ]; then
             what="The merged tree does not build or test Tuna Mail (:app-tunamail:assembleDebug, :app-tunamail:testDebugUnitTest)."
           elif [ "$PUSH" = failure ]; then
-            what="The merge was clean but could not be pushed. If upstream changed .github/workflows, GITHUB_TOKEN may not push it: merge by hand, or set an UPSTREAM_SYNC_TOKEN secret with the workflow scope."
+            what="The merge was clean but could not be pushed. If upstream changed .github/workflows, GITHUB_TOKEN may not push it: merge by hand, or set an UPSTREAM_SYNC_SSH_KEY secret holding a deploy key with write access."
           else
             what="The sync job failed before it could merge."
           fi
