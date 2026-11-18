@@ -11,6 +11,9 @@ should be the same app as upstream, kept that way by merging upstream continuous
 
 [`.github/README.md`](../../.github/README.md) is the fork's front page: GitHub shows it in place of
 upstream's `README.md`, which the fork never edits, so it is not a touchpoint.
+[`.github/SECURITY.md`](../../.github/SECURITY.md) is Tuna Mail's security policy in the same way:
+where to report a vulnerability in the fork's code, and the release key's fingerprint. Upstream's
+`SECURITY.md` stays as it is.
 
 There are three rules:
 
