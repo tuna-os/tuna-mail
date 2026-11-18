@@ -11,6 +11,9 @@ should be the same app as upstream, kept that way by merging upstream continuous
 
 [`.github/README.md`](../../.github/README.md) is the fork's front page: GitHub shows it in place of
 upstream's `README.md`, which the fork never edits, so it is not a touchpoint.
+[`.github/SECURITY.md`](../../.github/SECURITY.md) is Tuna Mail's security policy in the same way:
+where to report a vulnerability in the fork's code, and the release key's fingerprint. Upstream's
+`SECURITY.md` stays as it is.
 
 There are three rules:
 
@@ -85,8 +88,10 @@ and no Tuna Mail app. If it would, it goes upstream.
   `GeneratedFeatureFlagKey`; drop the pin then.
 - **OAuth:** Google and Microsoft only, with client ids from the build ([oauth.md](oauth.md));
   a provider with no id is left out.
-- **Native code:** `ndkVersion` and `abiFilters` (`arm64-v8a`, `x86_64`) are set in
-  `app-tunamail/build.gradle.kts` for the Tuta (Rust) and Proton (Go) libraries.
+- **Native code:** `ndkVersion` and ABI splits (`splits.abi`: `arm64-v8a`, `x86_64`, one APK per
+  ABI, see "Building") are set in `app-tunamail/build.gradle.kts` for the Tuta (Rust) and Proton
+  (Go) libraries. AGP refuses `ndk.abiFilters` next to ABI splits, so the ABI list lives only in
+  `splits.abi`.
 
 ## Keeping up with upstream
 
