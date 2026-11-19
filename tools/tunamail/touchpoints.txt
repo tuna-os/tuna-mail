@@ -43,7 +43,7 @@ app-common/src/main/kotlin/net/thunderbird/app/common/feature/mail/FeatureMailMo
 #   server search is a scan the server resumes from a cursor run one step at a time, so remote search shows what
 #   it found and lets the user search further, instead of holding the list until the whole folder is searched.
 legacy/message/src/main/java/app/k9mail/legacy/message/controller/MessagingListener.java
-legacy/core/src/main/java/com/fsck/k9/controller/MessagingController.java
+legacy/core/src/main/java/com/fsck/k9/controller/MessagingController.kt
 legacy/core/src/main/java/com/fsck/k9/controller/MessagingControllerWrapper.kt
 legacy/core/src/test/java/com/fsck/k9/controller/MessagingControllerTest.java
 
