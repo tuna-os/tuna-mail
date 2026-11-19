@@ -165,7 +165,7 @@ configuration does not recognize can still be set up as one of the extension's a
 
 ## Let a server search run in steps from a cursor
 
-**Touchpoints:** `legacy/message/.../MessagingListener.java`, `legacy/core/.../MessagingController.java`,
+**Touchpoints:** `legacy/message/.../MessagingListener.java`, `legacy/core/.../MessagingController.kt`,
 `MessagingControllerWrapper.kt`, `MessagingControllerTest.java`.
 
 **Draft PR title:** `feat(backend): let backends implement SteppedSearch for server search in steps`

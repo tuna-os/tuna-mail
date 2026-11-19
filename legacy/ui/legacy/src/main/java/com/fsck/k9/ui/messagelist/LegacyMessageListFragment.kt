@@ -86,7 +86,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import net.jcip.annotations.GuardedBy
+import androidx.annotation.GuardedBy
 import net.thunderbird.backend.api.search.SearchStep
 import net.thunderbird.core.android.account.Expunge
 import net.thunderbird.core.android.account.LegacyAccount
