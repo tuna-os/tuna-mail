@@ -112,6 +112,45 @@ class TutaMimeTest {
     }
 
     @Test
+    fun `a line break in a sender's name does not end the header block`() {
+        val header = TutaBackendTest.mail("m1").copy(
+            sender = Address(name = "Bob\r\n\r\nNot the body", address = "bob@example.com"),
+        )
+
+        val message = TutaMime.fullMessage(TutaBackendTest.message(header, html = "<p>Hallo</p>"))
+
+        assertThat(message.from.single().personal).isEqualTo("Bob Not the body")
+        assertThat(message.subject).isEqualTo("Subject m1")
+        assertThat(message.mimeType).isEqualTo("text/html")
+        assertThat(MessageExtractor.getTextFromPart(message)).isEqualTo("<p>Hallo</p>")
+    }
+
+    @Test
+    fun `a line break in a recipient's name does not end the header block`() {
+        val message = TutaMime.fullMessage(
+            TutaBackendTest.message(TutaBackendTest.mail("m1"), html = "<p>Hallo</p>").copy(
+                to = listOf(Address(name = "Alice\r\n\r\nNot the body", address = "alice@tuta.com")),
+            ),
+        )
+
+        assertThat(message.getRecipients(RecipientType.TO).map { it.address }).containsExactly("alice@tuta.com")
+        assertThat(message.subject).isEqualTo("Subject m1")
+        assertThat(MessageExtractor.getTextFromPart(message)).isEqualTo("<p>Hallo</p>")
+    }
+
+    @Test
+    fun `a line break in a sender's name does not cut an envelope short`() {
+        val header = TutaBackendTest.mail("m1").copy(
+            sender = Address(name = "Bob\r\n\r\nNot the body", address = "bob@example.com"),
+        )
+
+        val message = TutaMime.envelope(header)
+
+        assertThat(message.subject).isEqualTo("Subject m1")
+        assertThat(message.getRecipients(RecipientType.TO).map { it.address }).containsExactly("alice@tuta.com")
+    }
+
+    @Test
     fun `a line break in an attachment's type or content id does not start another header`() {
         val message = TutaMime.fullMessage(
             TutaBackendTest.message(

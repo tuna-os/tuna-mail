@@ -23,9 +23,9 @@ import org.tunaos.tuta.Address as TutaAddress
  * around the `text/html` body, and parsed with the app's own MIME parser. Threading headers (`In-Reply-To`,
  * `References`) are carried over from the original header block when the mail came from outside Tuta.
  *
- * Between Tuta accounts the subject, the addresses and an attachment's type and content id are whatever the sender's
- * client encrypted, so a value written into a header is put on one line first ([singleLine]): a line break in it must
- * not start a header of the sender's choosing or end the header block.
+ * Between Tuta accounts the subject, the addresses with their names and an attachment's type and content id are
+ * whatever the sender's client encrypted, so a value written into a header is put on one line first ([singleLine]): a
+ * line break in it must not start a header of the sender's choosing or end the header block.
  */
 internal object TutaMime {
     private const val CRLF = "\r\n"
@@ -96,7 +96,12 @@ internal object TutaMime {
         appendHeader(name, addresses.joinToString(",$CRLF ") { it.encoded() })
     }
 
-    private fun TutaAddress.encoded(): String = Address(address.singleLine(), name.ifBlank { null }).toEncodedString()
+    /**
+     * The name goes on one line as well: a name of plain words and line breaks is written as it is, not encoded, so
+     * an empty line in it would end the header block.
+     */
+    private fun TutaAddress.encoded(): String =
+        Address(address.singleLine(), name.singleLine().ifBlank { null }).toEncodedString()
 
     /** The value with every run of line breaks and other control characters turned into one space. */
     private fun String.singleLine(): String = replace(CONTROL_CHARACTERS, " ").trim()
