@@ -24,14 +24,16 @@ import org.tunaos.tuta.Address as TutaAddress
  * `References`) are carried over from the original header block when the mail came from outside Tuta.
  *
  * Between Tuta accounts the subject, the addresses with their names and an attachment's type and content id are
- * whatever the sender's client encrypted, so a value written into a header is put on one line first ([singleLine]): a
- * line break in it must not start a header of the sender's choosing or end the header block.
+ * whatever the sender's client encrypted, so [appendHeader] puts every value on one line: a line break in it must not
+ * start a header of the sender's choosing or end the header block. Call sites may still use [singleLine] to shape a
+ * value (for example before encoding it).
  */
 internal object TutaMime {
     private const val CRLF = "\r\n"
     private const val BASE64_LINE_LENGTH = 76
     private val THREADING_HEADERS = listOf("In-Reply-To", "References")
     private val CONTROL_CHARACTERS = Regex("\\p{Cntrl}+")
+    private val HEADER_VALUE_BREAKS = Regex("\r\n(?=[ \t])|\\p{Cntrl}+")
 
     /** The complete message. */
     fun fullMessage(message: Message): MimeMessage {
@@ -88,7 +90,15 @@ internal object TutaMime {
     }
 
     private fun StringBuilder.appendHeader(name: String, value: String) {
-        append(name).append(": ").append(value).append(CRLF)
+        append(name).append(": ").append(value.asHeaderValue()).append(CRLF)
+    }
+
+    /**
+     * Every value written by [appendHeader] stays one header: a line break or other control character in it, as a
+     * sender can put there, becomes a space. A fold (`CRLF` and a space or tab) written on purpose stays.
+     */
+    private fun String.asHeaderValue(): String = HEADER_VALUE_BREAKS.replace(this) { match ->
+        if (match.value == CRLF) CRLF else " "
     }
 
     private fun StringBuilder.appendAddressHeader(name: String, addresses: List<TutaAddress>) {
