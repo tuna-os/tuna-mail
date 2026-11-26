@@ -221,7 +221,7 @@ class TutaMimeTest {
     }
 
     private fun Message.withAttachment(index: Int, change: (Attachment) -> Attachment) =
-        copy(attachments = attachments.mapIndexed { i, attachment -> if (i == index) change(attachment) else attachment })
+        copy(attachments = attachments.mapIndexed { i, a -> if (i == index) change(a) else a })
 
     @Test
     fun `an envelope has the headers and no body`() {
